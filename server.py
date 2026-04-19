@@ -112,7 +112,7 @@ def write_handoff(summary_payload: dict[str, Any], notes: list[dict[str, Any]]) 
         "suggestions_count": summary_payload["suggestions_count"],
         "notes": notes,
     }
-    (WORKER_DIR / "latest_handoff.json").write_text(
+    (storage.WORKER_DIR / "latest_handoff.json").write_text(
         json.dumps(handoff, indent=2),
         encoding="utf-8",
     )
@@ -125,7 +125,7 @@ def write_handoff(summary_payload: dict[str, Any], notes: list[dict[str, Any]]) 
         "Please implement the following user suggestions when relevant:\n"
         f"{suggestions or '- No suggestions this cycle.'}\n"
     )
-    (WORKER_DIR / "copilot_task.md").write_text(copilot_prompt, encoding="utf-8")
+    (storage.WORKER_DIR / "copilot_task.md").write_text(copilot_prompt, encoding="utf-8")
 
 
 def update_worker_state(summary_payload: dict[str, Any], timestamp: datetime, next_run_epoch: float) -> None:
@@ -154,14 +154,96 @@ def get_worker_status() -> dict[str, Any]:
         }
 
 
+TOP_K = 10
+
+
+def open_cycle() -> dict[str, Any]:
+    cycle_id = f"cycle-{uuid.uuid4().hex[:8]}"
+    started_at = datetime.now(timezone.utc).isoformat()
+    record = {
+        "cycle_id": cycle_id,
+        "started_at": started_at,
+        "ends_at": None,
+    }
+    storage.write_json(storage.CURRENT_CYCLE_PATH, record)
+    logs.log("info", "cycle opened", cycle_id=cycle_id)
+    return record
+
+
+def close_cycle() -> str:
+    notes = load_notes()
+    cycle = storage.read_json(storage.CURRENT_CYCLE_PATH, default=None)
+    if cycle is None:
+        cycle = open_cycle()
+    cycle_id = cycle["cycle_id"]
+
+    sorted_notes = sorted(
+        notes,
+        key=lambda n: (-int(n.get("votes", 0)), n.get("createdAt", "")),
+    )
+    top_notes = sorted_notes[:TOP_K]
+    summary_payload = summarize_notes(top_notes)
+    write_handoff(summary_payload, top_notes)
+
+    handoff: agent_mod.Handoff = {
+        "summary": summary_payload["summary"],
+        "top_topics": summary_payload["top_topics"],
+        "notes": top_notes,
+    }
+    ended_at = datetime.now(timezone.utc).isoformat()
+
+    initial_status = "queued"
+    initial_error = None
+    try:
+        run_id = AGENT.kick_off(handoff)
+    except agent_mod.AgentError as exc:
+        run_id = f"failed-{uuid.uuid4().hex[:8]}"
+        initial_status = "failed"
+        initial_error = str(exc)
+        logs.log("error", "agent kick_off failed", cycle_id=cycle_id, error=str(exc))
+
+    archive = {
+        "cycle_id": cycle_id,
+        "started_at": cycle.get("started_at"),
+        "ended_at": ended_at,
+        "top_notes": top_notes,
+        "summary": summary_payload["summary"],
+        "run_id": run_id,
+    }
+    storage.write_json(storage.CYCLES_DIR / f"{cycle_id}.json", archive)
+
+    runs = storage.read_json(storage.RUNS_PATH, default=[])
+    runs.append({
+        "run_id": run_id,
+        "cycle_id": cycle_id,
+        "status": initial_status,
+        "created_at": ended_at,
+        "started_at": None,
+        "finished_at": ended_at if initial_status == "failed" else None,
+        "agent_run_url": None,
+        "pr_url": None,
+        "artifact_path": None,
+        "error": initial_error,
+    })
+    storage.write_json(storage.RUNS_PATH, runs)
+
+    save_notes([])
+    open_cycle()
+
+    update_worker_state(summary_payload, datetime.now(timezone.utc), time.time() + WORKER_INTERVAL_SECONDS)
+    logs.log("info", "cycle closed", cycle_id=cycle_id, run_id=run_id, kept=len(top_notes))
+    return run_id
+
+
 def run_worker() -> None:
+    if storage.read_json(storage.CURRENT_CYCLE_PATH, default=None) is None:
+        open_cycle()
     while True:
-        cycle_started = datetime.now(timezone.utc)
-        notes = load_notes()
-        summary_payload = summarize_notes(notes)
-        write_handoff(summary_payload, notes)
-        update_worker_state(summary_payload, cycle_started, time.time() + WORKER_INTERVAL_SECONDS)
         time.sleep(WORKER_INTERVAL_SECONDS)
+        try:
+            close_cycle()
+        except Exception as exc:
+            logs.log("error", f"close_cycle failed: {exc}")
 
 
 class NoteBoardHandler(SimpleHTTPRequestHandler):
