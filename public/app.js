@@ -150,30 +150,60 @@ async function refreshWorkerStatus() {
   }
 }
 
+/**
+ * Solve proof-of-work off the main thread using a Web Worker.
+ * Returns a Promise that resolves to the nonce string.
+ */
+function solvePow(challenge, difficulty) {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker("/pow-worker.js");
+    worker.onmessage = (e) => { worker.terminate(); resolve(e.data.nonce); };
+    worker.onerror = (e) => { worker.terminate(); reject(new Error(e.message)); };
+    worker.postMessage({ challenge, difficulty });
+  });
+}
+
 async function createNewNote() {
   const text = window.prompt("What's your tiny whimsical idea?", "");
   if (text === null || text.trim() === "") return;
 
+  // Disable button and show working state while PoW runs
+  newNoteBtn.disabled = true;
+  const origLabel = newNoteBtn.textContent;
+  newNoteBtn.textContent = "⏳ Working…";
   try {
+    // 1. Get the current PoW challenge from the server
+    const pow = await requestJson("/api/pow-challenge");
+
+    // 2. Solve it in a background Web Worker (non-blocking)
+    showToast("⏳ Solving proof-of-work…");
+    const nonce = await solvePow(pow.challenge, pow.difficulty_submit);
+
+    // 3. POST the note
     const note = await requestJson("/api/notes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         text: text.trim(),
+        pow: nonce,
+        challenge: pow.challenge,
         x: 30 + Math.floor(Math.random() * 260),
         y: 20 + Math.floor(Math.random() * 200),
         color: pickRandomColor(),
       }),
     });
+
     const noteEl = createNoteElement(note);
     noteEl.classList.add("just-added");
     canvas.appendChild(noteEl);
-    // scroll the new note into view + remove the highlight after the animation
     noteEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
     setTimeout(() => noteEl.classList.remove("just-added"), 1200);
     showToast(note.author_label ? `Posted as ${note.author_label}` : "Post-it added");
   } catch (_error) {
-    alert("Could not create a new post-it.");
+    alert("Could not create a new post-it. Please try again.");
+  } finally {
+    newNoteBtn.disabled = false;
+    newNoteBtn.textContent = origLabel;
   }
 }
 

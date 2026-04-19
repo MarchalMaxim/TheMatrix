@@ -492,6 +492,16 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
             return
         if self.path == "/api/worker-status":
             self._send_json(get_worker_status()); return
+        if self.path == "/api/pow-challenge":
+            voter = self._submitter_hash()
+            cycle_id = self._current_cycle_id()
+            challenge = abuse.make_pow_challenge(cycle_id, voter)
+            self._send_json({
+                "challenge": challenge,
+                "difficulty_submit": abuse.POW_DIFFICULTY_SUBMIT,
+                "difficulty_vote": abuse.POW_DIFFICULTY_VOTE,
+            })
+            return
         if self.path == "/api/runs":
             runs = storage.read_json(storage.RUNS_PATH, default=[])
             sanitised = [{k: r.get(k) for k in PUBLIC_RUN_FIELDS} for r in runs[-10:]]
