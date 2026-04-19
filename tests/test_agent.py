@@ -119,5 +119,59 @@ class GithubActionsSkeletonTests(unittest.TestCase):
         self.assertFalse(agent.GithubActionsAgent().is_mock)
 
 
+class FixesTests(unittest.TestCase):
+    def setUp(self):
+        self.agent = agent.MockGithubAgent(queued_seconds=0.01, running_seconds=0.01)
+
+    def test_blank_agent_kind_uses_mock(self):
+        with mock.patch.dict(os.environ, {"AGENT_KIND": ""}):
+            adapter = agent.make_agent()
+            self.assertTrue(adapter.is_mock)
+
+    def test_whitespace_agent_kind_uses_mock(self):
+        with mock.patch.dict(os.environ, {"AGENT_KIND": "  "}):
+            adapter = agent.make_agent()
+            self.assertTrue(adapter.is_mock)
+
+    def test_mixed_case_agent_kind_resolved(self):
+        with mock.patch.dict(os.environ, {"AGENT_KIND": "  MOCK  "}):
+            adapter = agent.make_agent()
+            self.assertTrue(adapter.is_mock)
+
+    def test_run_status_carries_placeholder_urls(self):
+        run_id = self.agent.kick_off({"summary": "x", "top_topics": [], "notes": []})
+        status = self.agent.poll(run_id)
+        self.assertIsNotNone(status.agent_run_url)
+        self.assertIn(run_id, status.agent_run_url)
+
+    def test_fetch_artifact_before_merge_raises(self):
+        run_id = self.agent.kick_off({"summary": "x", "top_topics": [], "notes": []})
+        time.sleep(0.05)
+        # poll says needs_merge, but no signal_merge yet -> fetch must reject
+        self.assertEqual(self.agent.poll(run_id).status, "needs_merge")
+        with self.assertRaises(agent.AgentError):
+            self.agent.fetch_artifact(run_id)
+
+    def test_concurrent_kickoff_poll_merge_no_errors(self):
+        """Stress test: many threads driving a few runs through full lifecycle."""
+        import concurrent.futures
+        agent_ = agent.MockGithubAgent(queued_seconds=0.0, running_seconds=0.0)
+
+        def lifecycle(i):
+            rid = agent_.kick_off({"summary": f"s{i}", "top_topics": [], "notes": []})
+            for _ in range(5):
+                agent_.poll(rid)
+            agent_.signal_merge(rid)
+            agent_.signal_merge(rid)  # idempotent
+            artifact = agent_.fetch_artifact(rid)
+            return artifact["theme_css"]
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as ex:
+            results = list(ex.map(lifecycle, range(40)))
+        self.assertEqual(len(results), 40)
+        for css in results:
+            self.assertGreater(len(css), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

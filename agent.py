@@ -111,14 +111,17 @@ class MockGithubAgent:
                 raise AgentError(f"unknown run_id: {run_id}")
             elapsed = time.time() - run["created_at"]
             merged_at = run["merged_at"]
+        run_url = f"https://example.invalid/mock/runs/{run_id}"
+        pr_url = f"https://example.invalid/mock/pull/{run_id}"
         if merged_at is not None:
             return RunStatus(status="merged", detail="operator merged",
-                             agent_run_url=None, pr_url=None)
+                             agent_run_url=run_url, pr_url=pr_url)
         if elapsed < self._queued_seconds:
-            return RunStatus(status="queued")
+            return RunStatus(status="queued", agent_run_url=run_url)
         if elapsed < self._queued_seconds + self._running_seconds:
-            return RunStatus(status="running")
-        return RunStatus(status="needs_merge", detail="awaiting operator merge")
+            return RunStatus(status="running", agent_run_url=run_url)
+        return RunStatus(status="needs_merge", detail="awaiting operator merge",
+                         agent_run_url=run_url, pr_url=pr_url)
 
     def signal_merge(self, run_id: str) -> None:
         with self._lock:
@@ -133,6 +136,8 @@ class MockGithubAgent:
             run = self._runs.get(run_id)
             if run is None:
                 raise AgentError(f"unknown run_id: {run_id}")
+            if run["merged_at"] is None:
+                raise AgentError(f"artifact not ready: run {run_id} not yet merged")
             summary = run["summary"]
             topics = run["top_topics"] or ["something"]
         seed = int(hashlib.sha256(summary.encode("utf-8")).hexdigest(), 16)
@@ -182,10 +187,12 @@ class GithubActionsAgent:
 
 
 def make_agent() -> AgentAdapter:
-    """Factory selected by AGENT_KIND env var. Default: mock."""
-    kind = os.environ.get("AGENT_KIND", "mock").lower()
+    """Factory selected by AGENT_KIND env var. Default: mock.
+    Treats empty/whitespace AGENT_KIND as missing -> uses default."""
+    raw = os.environ.get("AGENT_KIND") or ""
+    kind = raw.strip().lower() or "mock"
     if kind == "mock":
         return MockGithubAgent()
     if kind == "github":
         return GithubActionsAgent()
-    raise AgentError(f"unknown AGENT_KIND: {kind!r} (expected 'mock' or 'github')")
+    raise AgentError(f"unknown AGENT_KIND: {raw!r} (expected 'mock' or 'github')")
