@@ -75,6 +75,19 @@ class CssLintTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("large", reason)
 
+    def test_rejects_url_unbalanced_double_quote(self):
+        # url("https://evil.com/) — closing quote missing; primary regex misses it
+        ok, _, reason = lint.sanitise_css('body{background:url("https://evil.com/evil.png)}')
+        self.assertFalse(ok)
+
+    def test_rejects_url_unbalanced_single_quote(self):
+        ok, _, reason = lint.sanitise_css("body{background:url('https://evil.com/evil.png)}")
+        self.assertFalse(ok)
+
+    def test_rejects_protocol_relative_url(self):
+        ok, _, reason = lint.sanitise_css("body{background:url(//evil.com/evil.png)}")
+        self.assertFalse(ok)
+
 
 if __name__ == "__main__":
     unittest.main()

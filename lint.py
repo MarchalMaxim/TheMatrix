@@ -24,6 +24,13 @@ CSS_FORBIDDEN = [
     (re.compile(r"javascript:", re.IGNORECASE), "css contains javascript: protocol"),
 ]
 CSS_URL_RE = re.compile(r"url\(\s*(['\"]?)([^'\")]+)\1\s*\)", re.IGNORECASE)
+# Fallback: catch malformed url() with unbalanced/missing quotes where the primary
+# regex fails to match.  Rejects anything whose url argument starts with an
+# absolute or protocol-relative scheme that is not data:image/.
+CSS_URL_DANGEROUS_BARE = re.compile(
+    r"url\(\s*['\"]?(?:https?:|//|ftp:|vbscript:|javascript:)",
+    re.IGNORECASE,
+)
 
 
 class _Sanitiser(HTMLParser):
@@ -101,6 +108,7 @@ def sanitise_css(css: str) -> tuple[bool, str, str]:
     for pattern, reason in CSS_FORBIDDEN:
         if pattern.search(css):
             return False, "", reason
+    # Primary check: well-formed url() tokens.
     for match in CSS_URL_RE.finditer(css):
         target = match.group(2).strip()
         if target.startswith("#"):
@@ -108,4 +116,8 @@ def sanitise_css(css: str) -> tuple[bool, str, str]:
         if target.lower().startswith("data:image/"):
             continue
         return False, "", f"css url() points to disallowed target: {target}"
+    # Fallback: catch malformed url() with unbalanced quotes that the primary
+    # regex misses (e.g. url("https://evil.com/) with no closing quote).
+    if CSS_URL_DANGEROUS_BARE.search(css):
+        return False, "", "css url() points to disallowed target (unbalanced)"
     return True, css, ""
