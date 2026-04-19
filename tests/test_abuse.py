@@ -76,5 +76,29 @@ class PoWTests(unittest.TestCase):
         self.assertNotEqual(a, c)
 
 
+class QuotaTests(unittest.TestCase):
+    def setUp(self):
+        abuse.reset_quota_for_tests()
+
+    def test_first_three_submissions_allowed(self):
+        for _ in range(3):
+            self.assertTrue(abuse.check_and_consume_quota("h1", "cycle-1"))
+
+    def test_fourth_submission_rejected(self):
+        for _ in range(3):
+            abuse.check_and_consume_quota("h1", "cycle-1")
+        self.assertFalse(abuse.check_and_consume_quota("h1", "cycle-1"))
+
+    def test_separate_hashes_have_independent_quotas(self):
+        for _ in range(3):
+            abuse.check_and_consume_quota("h1", "cycle-1")
+        self.assertTrue(abuse.check_and_consume_quota("h2", "cycle-1"))
+
+    def test_quota_resets_per_cycle(self):
+        for _ in range(3):
+            abuse.check_and_consume_quota("h1", "cycle-1")
+        self.assertTrue(abuse.check_and_consume_quota("h1", "cycle-2"))
+
+
 if __name__ == "__main__":
     unittest.main()

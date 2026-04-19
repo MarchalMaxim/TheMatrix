@@ -64,3 +64,26 @@ def verify_pow(challenge: str, nonce: str, difficulty_bits: int) -> bool:
         return False
     digest = hashlib.sha256(f"{challenge}:{nonce}".encode("utf-8")).digest()
     return _leading_zero_bits(digest) >= difficulty_bits
+
+
+import threading
+
+SUBMISSIONS_PER_CYCLE = 3
+
+_QUOTA: dict[tuple[str, str], int] = {}
+_QUOTA_LOCK = threading.Lock()
+
+
+def reset_quota_for_tests() -> None:
+    with _QUOTA_LOCK:
+        _QUOTA.clear()
+
+
+def check_and_consume_quota(submitter_hash_value: str, cycle_id: str) -> bool:
+    key = (submitter_hash_value, cycle_id)
+    with _QUOTA_LOCK:
+        used = _QUOTA.get(key, 0)
+        if used >= SUBMISSIONS_PER_CYCLE:
+            return False
+        _QUOTA[key] = used + 1
+        return True
