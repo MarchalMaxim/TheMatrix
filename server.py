@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import hashlib
+import hashlib   # KEEP — required by author_label_from_ip
 import json
 import re
 import threading
@@ -13,6 +13,38 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
+import storage
+import abuse
+import logs
+import lint
+import agent as agent_mod
+
+PUBLIC_DIR = storage.PUBLIC_DIR
+DATA_DIR = storage.DATA_DIR
+WORKER_DIR = storage.WORKER_DIR
+NOTES_PATH = storage.NOTES_PATH
+WORKER_INTERVAL_SECONDS = 15 * 60
+
+STOPWORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
+    "how", "i", "in", "is", "it", "of", "on", "or", "our", "please",
+    "that", "the", "this", "to", "we", "with",
+}
+
+NOTES_LOCK = threading.Lock()
+WORKER_STATE_LOCK = threading.Lock()
+WORKER_STATE: dict[str, Any] = {
+    "summary": "Waiting for the first summary cycle...",
+    "top_topics": [],
+    "suggestions_count": 0,
+    "last_run_utc": None,
+    "next_run_epoch": None,
+}
+
+AGENT = agent_mod.make_agent()
+
+
+# === UX hotfix: preserved ===
 ANIMAL_ADJ = [
     "misty", "brave", "lazy", "quick", "wise", "bold", "calm", "loud",
     "tiny", "wild", "swift", "merry", "sleepy", "snappy", "fuzzy", "feral",
@@ -29,56 +61,9 @@ def author_label_from_ip(ip: str) -> str:
     noun = ANIMAL_NOUN[digest[1] % len(ANIMAL_NOUN)]
     return f"{adj} {noun}"
 
-ROOT = Path(__file__).resolve().parent
-PUBLIC_DIR = ROOT / "public"
-DATA_DIR = ROOT / "data"
-WORKER_DIR = ROOT / "worker" / "copilot_handoff"
-NOTES_PATH = DATA_DIR / "notes.json"
-WORKER_INTERVAL_SECONDS = 15 * 60
-
-STOPWORDS = {
-    "a",
-    "an",
-    "and",
-    "are",
-    "as",
-    "at",
-    "be",
-    "by",
-    "for",
-    "from",
-    "how",
-    "i",
-    "in",
-    "is",
-    "it",
-    "of",
-    "on",
-    "or",
-    "our",
-    "please",
-    "that",
-    "the",
-    "this",
-    "to",
-    "we",
-    "with",
-}
-
-NOTES_LOCK = threading.Lock()
-WORKER_STATE_LOCK = threading.Lock()
-WORKER_STATE: dict[str, Any] = {
-    "summary": "Waiting for the first summary cycle...",
-    "top_topics": [],
-    "suggestions_count": 0,
-    "last_run_utc": None,
-    "next_run_epoch": None,
-}
-
 
 def ensure_storage() -> None:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    WORKER_DIR.mkdir(parents=True, exist_ok=True)
+    storage.ensure_dirs()
     if not NOTES_PATH.exists():
         NOTES_PATH.write_text("[]", encoding="utf-8")
 
