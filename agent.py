@@ -164,6 +164,21 @@ class MockGithubAgent:
         return Artifact(theme_css=theme_css, slots=slots)
 
 
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Disables urllib's automatic redirect following by re-raising the
+    redirect status as an HTTPError. Critical for the GitHub artifact zip
+    endpoint, which redirects to Azure Blob Storage with a pre-signed URL
+    that mustn't receive the GitHub Authorization header."""
+
+    def http_error_301(self, req, fp, code, msg, headers):
+        raise urllib.error.HTTPError(req.full_url, code, msg, headers, fp)
+
+    http_error_302 = http_error_301
+    http_error_303 = http_error_301
+    http_error_307 = http_error_301
+    http_error_308 = http_error_301
+
+
 class GithubActionsAgent:
     """Live adapter that dispatches a GitHub Actions workflow and downloads
     the artifact it produces.
@@ -326,11 +341,74 @@ class GithubActionsAgent:
             (a for a in items if run_id in (a.get("name") or "")),
             items[0],
         )
-        download_path = (
-            f"/repos/{self.owner}/{self.repo}/actions/artifacts/{chosen['id']}/zip"
-        )
-        _, zip_bytes = self._request("GET", download_path)
+        zip_bytes = self._download_artifact_zip(chosen["id"])
         return self._parse_artifact_zip(zip_bytes)
+
+    def _download_artifact_zip(self, artifact_id: int) -> bytes:
+        """Download an artifact zip.
+
+        GitHub's /actions/artifacts/{id}/zip endpoint replies with a 302 to
+        Azure Blob Storage. The pre-signed Azure URL must NOT receive the
+        GitHub Authorization header (Azure 401s if you send one). urllib's
+        default opener auto-follows redirects with all headers, so we
+        intercept the 302 ourselves and re-request the Location with a
+        minimal header set.
+        """
+        url = (
+            f"{self._API}/repos/{self.owner}/{self.repo}"
+            f"/actions/artifacts/{artifact_id}/zip"
+        )
+        # Step 1 — GitHub side, capture the redirect manually.
+        gh_req = urllib.request.Request(
+            url,
+            method="GET",
+            headers={
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {self.token}",
+                "User-Agent": "TheMatrix-agent/1.0",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+        )
+        opener = urllib.request.build_opener(_NoRedirectHandler())
+        try:
+            with opener.open(gh_req, timeout=30) as resp:
+                # Some endpoints may return 200 directly (older API versions);
+                # in that case the body IS the zip.
+                return resp.read()
+        except urllib.error.HTTPError as exc:
+            if exc.code not in (301, 302, 303, 307, 308):
+                detail = ""
+                try:
+                    detail = exc.read().decode("utf-8", "ignore")[:300]
+                except Exception:  # noqa: BLE001
+                    pass
+                raise AgentError(
+                    f"GitHub artifact download HTTP {exc.code}: {detail}"
+                ) from exc
+            location = exc.headers.get("Location")
+            if not location:
+                raise AgentError("artifact 3xx response without Location header") from exc
+
+        # Step 2 — Azure side, no GitHub auth header.
+        blob_req = urllib.request.Request(
+            location,
+            method="GET",
+            headers={"User-Agent": "TheMatrix-agent/1.0"},
+        )
+        try:
+            with self._http_open(blob_req, timeout=60) as r:
+                return r.read()
+        except urllib.error.HTTPError as exc:
+            detail = ""
+            try:
+                detail = exc.read().decode("utf-8", "ignore")[:300]
+            except Exception:  # noqa: BLE001
+                pass
+            raise AgentError(
+                f"artifact blob fetch HTTP {exc.code}: {detail}"
+            ) from exc
+        except (urllib.error.URLError, OSError, TimeoutError) as exc:
+            raise AgentError(f"artifact blob network error: {exc}") from exc
 
     @staticmethod
     def _parse_artifact_zip(zip_bytes: bytes) -> Artifact:
