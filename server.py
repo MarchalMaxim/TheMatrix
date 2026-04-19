@@ -190,17 +190,36 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
             return
         return super().do_GET()
 
-    def do_POST(self) -> None:  # noqa: N802
-        if self.path != "/api/notes":
-            self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
-            return
+    def _client_ip(self) -> str:
+        return self.client_address[0]
 
+    def _user_agent(self) -> str:
+        return self.headers.get("User-Agent", "")
+
+    def _current_cycle_id(self) -> str:
+        cycle = storage.read_json(storage.CURRENT_CYCLE_PATH, default={})
+        return cycle.get("cycle_id", "cycle-bootstrap")
+
+    def _submitter_hash(self) -> str:
+        salt = storage.get_daily_salt(today=datetime.now(timezone.utc).date().isoformat())
+        return abuse.submitter_hash(self._client_ip(), self._user_agent(), salt=salt)
+
+    def do_POST(self) -> None:  # noqa: N802
+        if self.path == "/api/notes":
+            return self._handle_create_note()
+        vote_match = re.match(r"^/api/notes/([^/]+)/vote$", self.path)
+        if vote_match:
+            return self._handle_vote(vote_match.group(1))
+        self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
+
+    def _handle_create_note(self) -> None:
+        # TEMPORARILY KEEP existing behaviour; Task 12 hardens this with abuse + PoW.
         payload = self._read_json()
         text = str(payload.get("text", "")).strip()
         if not text:
             self._send_json({"error": "text is required"}, status=HTTPStatus.BAD_REQUEST)
             return
-
+        cycle_id = self._current_cycle_id()
         note = {
             "id": str(uuid.uuid4()),
             "text": text[:500],
@@ -208,12 +227,43 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
             "y": int(payload.get("y", 40)),
             "color": str(payload.get("color", "#ffe98f"))[:20],
             "createdAt": datetime.now(timezone.utc).isoformat(),
-            "author_label": author_label_from_ip(self.client_address[0]),
+            "votes": 0,
+            "voter_hashes": [],
+            "submitter_hash": self._submitter_hash(),
+            "cycle_id": cycle_id,
+            "author_label": author_label_from_ip(self._client_ip()),
         }
         notes = load_notes()
         notes.append(note)
         save_notes(notes)
         self._send_json(note, status=HTTPStatus.CREATED)
+
+    def _handle_vote(self, note_id: str) -> None:
+        payload = self._read_json()
+        nonce = str(payload.get("pow", ""))
+        challenge = str(payload.get("challenge", ""))
+        voter = self._submitter_hash()
+        expected_challenge = abuse.make_pow_challenge(self._current_cycle_id(), voter)
+        if challenge != expected_challenge:
+            self._send_json({"error": "stale challenge"}, status=HTTPStatus.BAD_REQUEST)
+            return
+        if not abuse.verify_pow(challenge, nonce, abuse.POW_DIFFICULTY_VOTE):
+            self._send_json({"error": "invalid proof of work"}, status=HTTPStatus.BAD_REQUEST)
+            return
+
+        notes = load_notes()
+        for note in notes:
+            if note.get("id") == note_id:
+                voters = note.setdefault("voter_hashes", [])
+                if voter in voters:
+                    voters.remove(voter)
+                else:
+                    voters.append(voter)
+                note["votes"] = len(voters)
+                save_notes(notes)
+                self._send_json(note)
+                return
+        self.send_error(HTTPStatus.NOT_FOUND, "Note not found")
 
     def do_PUT(self) -> None:  # noqa: N802
         if not self.path.startswith("/api/notes/"):
