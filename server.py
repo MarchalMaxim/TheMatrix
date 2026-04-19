@@ -476,14 +476,32 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
             status = html_mod.escape(str(r.get("status", "")))
             run_id = html_mod.escape(str(r.get("run_id", "")))
             cycle_id = html_mod.escape(str(r.get("cycle_id", "")))
-            rows.append(f"<tr><td>{run_id}</td><td>{cycle_id}</td><td>{status}</td><td>{merge_btn}</td></tr>")
+            error = html_mod.escape(str(r.get("error") or ""))
+            rows.append(
+                f"<tr><td>{run_id}</td><td>{cycle_id}</td><td>{status}</td>"
+                f"<td style='max-width:600px;color:#a00;white-space:pre-wrap'>{error}</td>"
+                f"<td>{merge_btn}</td></tr>"
+            )
 
+        # Render full log entries including all structured extras (error,
+        # cycle_id, run_id, etc.) — these are critical for debugging.
+        STD_FIELDS = {"ts", "level", "message"}
+        LEVEL_COLORS = {"error": "#a00", "warn": "#a60", "info": "#357", "debug": "#666"}
         log_lines = []
         for entry in reversed(log_entries[-200:]):
-            level = html_mod.escape(entry.get("level", ""))
+            level = entry.get("level", "")
+            color = LEVEL_COLORS.get(level, "#333")
+            level_esc = html_mod.escape(level)
             msg = html_mod.escape(entry.get("message", ""))
             ts = html_mod.escape(entry.get("ts", ""))
-            log_lines.append(f"<li>[{ts}] <b>{level}</b> {msg}</li>")
+            extras = " ".join(
+                f"<i>{html_mod.escape(k)}=</i>{html_mod.escape(str(v))}"
+                for k, v in entry.items() if k not in STD_FIELDS
+            )
+            log_lines.append(
+                f"<li>[{ts}] <b style='color:{color}'>{level_esc}</b> "
+                f"{msg} <span style='color:#666'>{extras}</span></li>"
+            )
 
         token_esc = html_mod.escape(self._logs_token() or "")
         return (
@@ -502,7 +520,7 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
             "</button>"
             "</p>"
             "<h2>Run Queue</h2>"
-            f"<table><tr><th>run_id</th><th>cycle_id</th><th>status</th><th>action</th></tr>"
+            f"<table><tr><th>run_id</th><th>cycle_id</th><th>status</th><th>error</th><th>action</th></tr>"
             f"{''.join(rows)}</table>"
             "<h2>Recent Log</h2>"
             f"<ul>{''.join(log_lines)}</ul>"
