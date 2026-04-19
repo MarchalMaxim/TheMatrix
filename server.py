@@ -246,6 +246,141 @@ def run_worker() -> None:
             logs.log("error", f"close_cycle failed: {exc}")
 
 
+RUN_POLLER_INTERVAL_SECONDS = 10
+MAX_RUN_DURATION_SECONDS = 60 * 60  # 1 hour: stuck runs marked failed
+TERMINAL_STATUSES = {"applied", "rejected", "failed"}
+
+
+def _parse_iso(value: str | None) -> float | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value).timestamp()
+    except ValueError:
+        return None
+
+
+def _populate_urls(run: dict[str, Any], status: agent_mod.RunStatus) -> bool:
+    """Copy agent_run_url / pr_url from status into run if newly known. Returns True if changed."""
+    changed = False
+    if status.agent_run_url and run.get("agent_run_url") != status.agent_run_url:
+        run["agent_run_url"] = status.agent_run_url
+        changed = True
+    if status.pr_url and run.get("pr_url") != status.pr_url:
+        run["pr_url"] = status.pr_url
+        changed = True
+    return changed
+
+
+def _apply_for_run(run: dict[str, Any]) -> None:
+    """Fetch artifact, lint+apply, write outcome onto run dict in place."""
+    try:
+        artifact = AGENT.fetch_artifact(run["run_id"])
+    except agent_mod.AgentError as exc:
+        run["status"] = "failed"
+        run["error"] = f"fetch_artifact: {exc}"
+        logs.log("error", "fetch_artifact failed", run_id=run["run_id"], error=str(exc))
+        return
+    try:
+        result = lint.apply_artifact(artifact)
+    except Exception as exc:
+        run["status"] = "failed"
+        run["error"] = f"apply errored: {exc}"
+        logs.log("error", "apply errored", run_id=run["run_id"], error=str(exc))
+        return
+    if result.applied:
+        run["status"] = "applied"
+        run["artifact_path"] = str(storage.GENERATED_DIR / "theme.css")
+        logs.log("info", "artifact applied", run_id=run["run_id"])
+    else:
+        run["status"] = "rejected"
+        run["error"] = result.reason
+        lint.restore_last_good()
+        logs.log("warn", "artifact rejected; reverted", run_id=run["run_id"], reason=result.reason)
+
+
+def poll_runs_once() -> None:
+    """Single sweep of all non-terminal runs.
+
+    `applying` is treated as recoverable: if the server crashed mid-apply,
+    the next poll re-fetches and re-applies (idempotent — same artifact, same result).
+    """
+    runs = storage.read_json(storage.RUNS_PATH, default=[])
+    if not runs:
+        return
+    changed = False
+    now = time.time()
+    for run in runs:
+        if run["status"] in TERMINAL_STATUSES:
+            continue
+
+        # stuck-run timeout
+        created = _parse_iso(run.get("created_at"))
+        if created is not None and now - created > MAX_RUN_DURATION_SECONDS:
+            run["status"] = "failed"
+            run["error"] = f"stuck for >{MAX_RUN_DURATION_SECONDS}s"
+            run["finished_at"] = datetime.now(timezone.utc).isoformat()
+            logs.log("error", "run timed out", run_id=run["run_id"])
+            changed = True
+            continue
+
+        # poll the adapter
+        try:
+            status = AGENT.poll(run["run_id"])
+        except agent_mod.AgentError as exc:
+            run["status"] = "failed"
+            run["error"] = str(exc)
+            run["finished_at"] = datetime.now(timezone.utc).isoformat()
+            logs.log("error", "poll failed", run_id=run["run_id"], error=str(exc))
+            changed = True
+            continue
+
+        if _populate_urls(run, status):
+            changed = True
+
+        # `applying` means we crashed mid-apply previously; re-run apply now
+        if run["status"] == "applying":
+            _apply_for_run(run)
+            run["finished_at"] = datetime.now(timezone.utc).isoformat()
+            changed = True
+            continue
+
+        if status.status == "queued":
+            continue
+        if status.status == "failed":
+            run["status"] = "failed"
+            run["error"] = status.error or "agent reported failed"
+            run["finished_at"] = datetime.now(timezone.utc).isoformat()
+            changed = True
+            continue
+        if status.status == "running" and run["status"] != "running":
+            run["status"] = "running"
+            run["started_at"] = datetime.now(timezone.utc).isoformat()
+            changed = True
+            continue
+        if status.status == "needs_merge" and run["status"] != "needs_merge":
+            run["status"] = "needs_merge"
+            changed = True
+            continue
+        if status.status == "merged":
+            run["status"] = "applying"
+            _apply_for_run(run)
+            run["finished_at"] = datetime.now(timezone.utc).isoformat()
+            changed = True
+            continue
+    if changed:
+        storage.write_json(storage.RUNS_PATH, runs)
+
+
+def run_poller() -> None:
+    while True:
+        try:
+            poll_runs_once()
+        except Exception as exc:
+            logs.log("error", f"poller errored: {exc}")
+        time.sleep(RUN_POLLER_INTERVAL_SECONDS)
+
+
 class NoteBoardHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, directory=str(PUBLIC_DIR), **kwargs)
@@ -391,10 +526,11 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
 
 
 def main() -> None:
-    ensure_storage()
-    worker = threading.Thread(target=run_worker, daemon=True)
-    worker.start()
-
+    storage.ensure_dirs()
+    if not NOTES_PATH.exists():
+        NOTES_PATH.write_text("[]", encoding="utf-8")
+    threading.Thread(target=run_worker, daemon=True).start()
+    threading.Thread(target=run_poller, daemon=True).start()
     server = ThreadingHTTPServer(("127.0.0.1", 8000), NoteBoardHandler)
     print("TheMatrix running at http://127.0.0.1:8000")
     server.serve_forever()

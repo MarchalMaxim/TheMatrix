@@ -6,6 +6,7 @@ from unittest import mock
 
 import storage
 import abuse
+import lint
 
 
 class CyclePipelineTests(unittest.TestCase):
@@ -22,6 +23,8 @@ class CyclePipelineTests(unittest.TestCase):
             mock.patch.object(storage, "CURRENT_CYCLE_PATH", self.root / "data" / "current_cycle.json"),
             mock.patch.object(storage, "GENERATED_DIR", self.root / "public" / "generated"),
             mock.patch.object(storage, "LAST_GOOD_DIR", self.root / "public" / "generated" / ".last_good"),
+            mock.patch.object(lint, "GENERATED_DIR", self.root / "public" / "generated"),
+            mock.patch.object(lint, "LAST_GOOD_DIR", self.root / "public" / "generated" / ".last_good"),
         ]
         for p in self.patches:
             p.start()
@@ -98,3 +101,37 @@ class CyclePipelineTests(unittest.TestCase):
         self.assertEqual(runs[0]["run_id"], run_id)
         self.assertEqual(runs[0]["status"], "queued")
         self.assertEqual(runs[0]["cycle_id"], "c1")
+
+
+import time as _time
+
+
+class PollerTests(CyclePipelineTests):
+    def test_poller_advances_run_to_applied_after_merge(self):
+        storage.write_json(storage.NOTES_PATH, [
+            {"id": "a", "text": "make it pink", "x": 0, "y": 0, "color": "#fff",
+             "createdAt": "x", "votes": 5, "voter_hashes": [], "submitter_hash": "h", "cycle_id": "c1"},
+        ])
+        storage.write_json(storage.CURRENT_CYCLE_PATH, {"cycle_id": "c1", "started_at": "x", "ends_at": None})
+        run_id = self.server.close_cycle()
+
+        # tick poller once → status becomes queued (no change yet)
+        self.server.poll_runs_once()
+        runs = storage.read_json(storage.RUNS_PATH, default=[])
+        self.assertEqual(runs[0]["status"], "queued")
+
+        # advance mock past queued+running
+        _time.sleep(0.05)
+        self.server.poll_runs_once()
+        runs = storage.read_json(storage.RUNS_PATH, default=[])
+        self.assertEqual(runs[0]["status"], "needs_merge")
+
+        # operator merges
+        self.server.AGENT.signal_merge(run_id)
+        self.server.poll_runs_once()
+        runs = storage.read_json(storage.RUNS_PATH, default=[])
+        self.assertEqual(runs[0]["status"], "applied")
+
+        # generated artifacts written
+        self.assertTrue((storage.GENERATED_DIR / "theme.css").exists())
+        self.assertTrue((storage.GENERATED_DIR / "slots.json").exists())

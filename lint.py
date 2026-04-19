@@ -141,8 +141,10 @@ class ApplyResult:
 
 
 def apply_artifact(artifact: dict) -> ApplyResult:
-    GENERATED_DIR.mkdir(parents=True, exist_ok=True)
-    LAST_GOOD_DIR.mkdir(parents=True, exist_ok=True)
+    generated_dir: Path = GENERATED_DIR
+    last_good_dir: Path = LAST_GOOD_DIR
+    generated_dir.mkdir(parents=True, exist_ok=True)
+    last_good_dir.mkdir(parents=True, exist_ok=True)
 
     theme_css = artifact.get("theme_css", "")
     slots = artifact.get("slots", {})
@@ -158,14 +160,14 @@ def apply_artifact(artifact: dict) -> ApplyResult:
             return ApplyResult(False, f"slot '{name}': {reason}")
         cleaned_slots[name] = clean
 
-    theme_path = GENERATED_DIR / "theme.css"
-    slots_path = GENERATED_DIR / "slots.json"
+    theme_path = generated_dir / "theme.css"
+    slots_path = generated_dir / "slots.json"
     theme_path.write_text(css_clean, encoding="utf-8")
     slots_path.write_text(_json.dumps(cleaned_slots, indent=2), encoding="utf-8")
 
     # update last-good
-    shutil.copy2(theme_path, LAST_GOOD_DIR / "theme.css")
-    shutil.copy2(slots_path, LAST_GOOD_DIR / "slots.json")
+    shutil.copy2(theme_path, last_good_dir / "theme.css")
+    shutil.copy2(slots_path, last_good_dir / "slots.json")
 
     return ApplyResult(True)
 
