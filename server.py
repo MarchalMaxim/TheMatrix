@@ -213,13 +213,31 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
         self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
 
     def _handle_create_note(self) -> None:
-        # TEMPORARILY KEEP existing behaviour; Task 12 hardens this with abuse + PoW.
         payload = self._read_json()
         text = str(payload.get("text", "")).strip()
-        if not text:
-            self._send_json({"error": "text is required"}, status=HTTPStatus.BAD_REQUEST)
-            return
+        nonce = str(payload.get("pow", ""))
+        challenge = str(payload.get("challenge", ""))
+        voter = self._submitter_hash()
         cycle_id = self._current_cycle_id()
+        expected = abuse.make_pow_challenge(cycle_id, voter)
+        if challenge != expected:
+            logs.log("warn", "create rejected: stale challenge", voter=voter)
+            self._send_json({"error": "stale challenge"}, status=HTTPStatus.BAD_REQUEST)
+            return
+        if not abuse.verify_pow(challenge, nonce, abuse.POW_DIFFICULTY_SUBMIT):
+            logs.log("warn", "create rejected: bad pow", voter=voter)
+            self._send_json({"error": "invalid proof of work"}, status=HTTPStatus.BAD_REQUEST)
+            return
+        ok, reason = abuse.lint_submission(text)
+        if not ok:
+            logs.log("warn", "create rejected: content lint", voter=voter, reason=reason)
+            self._send_json({"error": reason}, status=HTTPStatus.BAD_REQUEST)
+            return
+        if not abuse.check_and_consume_quota(voter, cycle_id):
+            logs.log("warn", "create rejected: quota", voter=voter, cycle=cycle_id)
+            self._send_json({"error": "submission quota exceeded for this cycle"}, status=429)
+            return
+
         note = {
             "id": str(uuid.uuid4()),
             "text": text[:500],
@@ -229,13 +247,14 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
             "createdAt": datetime.now(timezone.utc).isoformat(),
             "votes": 0,
             "voter_hashes": [],
-            "submitter_hash": self._submitter_hash(),
+            "submitter_hash": voter,
             "cycle_id": cycle_id,
             "author_label": author_label_from_ip(self._client_ip()),
         }
         notes = load_notes()
         notes.append(note)
         save_notes(notes)
+        logs.log("info", "note created", note_id=note["id"], voter=voter, cycle=cycle_id)
         self._send_json(note, status=HTTPStatus.CREATED)
 
     def _handle_vote(self, note_id: str) -> None:
