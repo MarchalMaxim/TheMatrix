@@ -1,4 +1,5 @@
 import json
+import os
 import threading
 import time
 import unittest
@@ -232,6 +233,67 @@ class ReadEndpointsTests(unittest.TestCase):
         with urllib.request.urlopen(f"{self.url}/api/cycle/old") as resp:
             data = json.loads(resp.read())
         self.assertEqual(data["cycle_id"], "old")
+
+
+class LogsPageTests(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        os.environ["LOGS_TOKEN"] = "secret-xyz"
+        self.tmp = tempfile.TemporaryDirectory()
+        self.url, self.stop = _start_server(Path(self.tmp.name))
+        self.addCleanup(self.tmp.cleanup)
+        self.addCleanup(self.stop)
+        self.addCleanup(lambda: os.environ.pop("LOGS_TOKEN", None))
+
+    def test_missing_token_returns_404(self):
+        try:
+            urllib.request.urlopen(f"{self.url}/logs")
+            self.fail("expected 404")
+        except urllib.error.HTTPError as e:
+            self.assertEqual(e.code, 404)
+
+    def test_wrong_token_returns_404(self):
+        try:
+            urllib.request.urlopen(f"{self.url}/logs?token=nope")
+            self.fail("expected 404")
+        except urllib.error.HTTPError as e:
+            self.assertEqual(e.code, 404)
+
+    def test_correct_token_returns_html_with_runs_and_logs(self):
+        import logs as logs_mod
+        logs_mod.log("info", "test message")
+        storage.write_json(storage.RUNS_PATH, [{
+            "run_id": "r-abc", "cycle_id": "c1", "status": "needs_merge",
+            "created_at": "x", "started_at": "y", "finished_at": None,
+            "agent_run_url": None, "pr_url": None, "artifact_path": None, "error": None,
+        }])
+        with urllib.request.urlopen(f"{self.url}/logs?token=secret-xyz") as resp:
+            body = resp.read().decode("utf-8")
+        self.assertIn("r-abc", body)
+        self.assertIn("test message", body)
+        self.assertIn('action="/logs/merge"', body)
+
+    def test_mock_merge_action_advances_run(self):
+        import server
+        run_id = server.AGENT.kick_off({"summary": "x", "top_topics": [], "notes": []})
+        storage.write_json(storage.RUNS_PATH, [{
+            "run_id": run_id, "cycle_id": "c1", "status": "needs_merge",
+            "created_at": "x", "started_at": "y", "finished_at": None,
+            "agent_run_url": None, "pr_url": None, "artifact_path": None, "error": None,
+        }])
+        body = json.dumps({"run_id": run_id, "token": "secret-xyz"}).encode("utf-8")
+        req = urllib.request.Request(
+            f"{self.url}/logs/merge",
+            data=body,
+            headers={"Content-Type": "application/json", "User-Agent": "test"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req) as resp:
+            self.assertEqual(resp.status, 200)
+        # poll once to advance through merged → applied
+        server.poll_runs_once()
+        runs = storage.read_json(storage.RUNS_PATH, default=[])
+        self.assertEqual(runs[0]["status"], "applied")
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib   # KEEP — required by author_label_from_ip
 import json
+import os
 import re
 import threading
 import time
@@ -41,6 +42,7 @@ WORKER_STATE: dict[str, Any] = {
     "suggestions_count": 0,
     "last_run_utc": None,
     "next_run_epoch": None,
+    "cycle_id": None,
 }
 
 AGENT = agent_mod.make_agent()
@@ -153,6 +155,7 @@ def get_worker_status() -> dict[str, Any]:
             "next_run_epoch": next_run_epoch,
             "seconds_until_next_cycle": seconds_until_next_cycle,
             "interval_seconds": WORKER_INTERVAL_SECONDS,
+            "cycle_id": WORKER_STATE.get("cycle_id"),
         }
 
 
@@ -168,6 +171,8 @@ def open_cycle() -> dict[str, Any]:
         "ends_at": None,
     }
     storage.write_json(storage.CURRENT_CYCLE_PATH, record)
+    with WORKER_STATE_LOCK:
+        WORKER_STATE["cycle_id"] = cycle_id
     logs.log("info", "cycle opened", cycle_id=cycle_id)
     return record
 
@@ -238,8 +243,13 @@ def close_cycle() -> str:
 
 
 def run_worker() -> None:
-    if storage.read_json(storage.CURRENT_CYCLE_PATH, default=None) is None:
+    existing = storage.read_json(storage.CURRENT_CYCLE_PATH, default=None)
+    if existing is None:
         open_cycle()
+    else:
+        # Seed cycle_id into WORKER_STATE so the frontend can track cycle changes.
+        with WORKER_STATE_LOCK:
+            WORKER_STATE["cycle_id"] = existing.get("cycle_id")
     while True:
         time.sleep(WORKER_INTERVAL_SECONDS)
         try:
@@ -400,9 +410,86 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
         raw = self.rfile.read(length) if length else b"{}"
         return json.loads(raw.decode("utf-8") or "{}")
 
+    # ------------------------------------------------------------------
+    # Helpers shared across handlers
+    # ------------------------------------------------------------------
+
+    def _sanitize_note(self, note: dict[str, Any], caller_hash: str) -> dict[str, Any]:
+        """Return a public-safe copy of a note: drop internal fields, add is_owner."""
+        out = {k: v for k, v in note.items() if k not in ("voter_hashes", "submitter_hash")}
+        out["is_owner"] = note.get("submitter_hash") == caller_hash
+        return out
+
+    # ------------------------------------------------------------------
+    # /logs helpers
+    # ------------------------------------------------------------------
+
+    def _logs_token(self) -> str | None:
+        return os.environ.get("LOGS_TOKEN") or None
+
+    def _query_param(self, name: str) -> str | None:
+        if "?" not in self.path:
+            return None
+        qs = self.path.split("?", 1)[1]
+        for part in qs.split("&"):
+            if "=" in part:
+                k, v = part.split("=", 1)
+                if k == name:
+                    return v
+        return None
+
+    def _render_logs_page(self) -> str:
+        import html as html_mod
+        runs = storage.read_json(storage.RUNS_PATH, default=[])
+        log_entries = logs.recent()
+
+        rows = []
+        for r in reversed(runs[-50:]):
+            merge_btn = ""
+            if r.get("status") == "needs_merge":
+                run_id_esc = html_mod.escape(r.get("run_id", ""))
+                merge_btn = (
+                    f'<form method="post" action="/logs/merge" style="display:inline">'
+                    f'<input type="hidden" name="run_id" value="{run_id_esc}">'
+                    f'<input type="hidden" name="token" value="{html_mod.escape(self._logs_token() or "")}">'
+                    f'<button type="submit">Merge</button>'
+                    f'</form>'
+                )
+            status = html_mod.escape(str(r.get("status", "")))
+            run_id = html_mod.escape(str(r.get("run_id", "")))
+            cycle_id = html_mod.escape(str(r.get("cycle_id", "")))
+            rows.append(f"<tr><td>{run_id}</td><td>{cycle_id}</td><td>{status}</td><td>{merge_btn}</td></tr>")
+
+        log_lines = []
+        for entry in reversed(log_entries[-200:]):
+            level = html_mod.escape(entry.get("level", ""))
+            msg = html_mod.escape(entry.get("message", ""))
+            ts = html_mod.escape(entry.get("ts", ""))
+            log_lines.append(f"<li>[{ts}] <b>{level}</b> {msg}</li>")
+
+        return (
+            "<!doctype html><html><head><meta charset=utf-8>"
+            "<title>TheMatrix — Operator Logs</title>"
+            "<style>body{font-family:monospace;padding:1rem}"
+            "table{border-collapse:collapse;width:100%}"
+            "td,th{border:1px solid #ccc;padding:0.4rem 0.6rem;text-align:left}"
+            "ul{list-style:none;padding:0}li{margin:0.2rem 0}"
+            "</style></head><body>"
+            "<h1>Operator Logs</h1>"
+            "<h2>Run Queue</h2>"
+            f"<table><tr><th>run_id</th><th>cycle_id</th><th>status</th><th>action</th></tr>"
+            f"{''.join(rows)}</table>"
+            "<h2>Recent Log</h2>"
+            f"<ul>{''.join(log_lines)}</ul>"
+            "</body></html>"
+        )
+
     def do_GET(self) -> None:  # noqa: N802
         if self.path == "/api/notes":
-            self._send_json(load_notes()); return
+            caller_hash = self._submitter_hash()
+            all_notes = load_notes()
+            self._send_json([self._sanitize_note(n, caller_hash) for n in all_notes])
+            return
         if self.path == "/api/worker-status":
             self._send_json(get_worker_status()); return
         if self.path == "/api/runs":
@@ -418,6 +505,20 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
             if archive is None:
                 self.send_error(HTTPStatus.NOT_FOUND, "Not Found"); return
             self._send_json(archive); return
+        # /logs — token-gated operator page
+        logs_path = self.path.split("?", 1)[0]
+        if logs_path == "/logs":
+            expected = self._logs_token()
+            provided = self._query_param("token")
+            if not expected or provided != expected:
+                self.send_error(HTTPStatus.NOT_FOUND, "Not Found"); return
+            body = self._render_logs_page().encode("utf-8")
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         return super().do_GET()
 
     def _client_ip(self) -> str:
@@ -437,10 +538,32 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         if self.path == "/api/notes":
             return self._handle_create_note()
+        if self.path == "/logs/merge":
+            return self._handle_logs_merge()
         vote_match = re.match(r"^/api/notes/([^/]+)/vote$", self.path)
         if vote_match:
             return self._handle_vote(vote_match.group(1))
         self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
+
+    def _handle_logs_merge(self) -> None:
+        """Mock-merge action: only works when AGENT.is_mock is True."""
+        payload = self._read_json()
+        run_id = str(payload.get("run_id", ""))
+        token = str(payload.get("token", ""))
+        expected = self._logs_token()
+        if not expected or token != expected:
+            self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
+            return
+        if not AGENT.is_mock:
+            self._send_json({"error": "merge only available for mock agent"}, status=HTTPStatus.BAD_REQUEST)
+            return
+        try:
+            AGENT.signal_merge(run_id)  # type: ignore[attr-defined]
+        except agent_mod.AgentError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+            return
+        logs.log("info", "mock merge signalled", run_id=run_id)
+        self._send_json({"merged": True})
 
     def _handle_create_note(self) -> None:
         payload = self._read_json()
@@ -485,7 +608,7 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
         notes.append(note)
         save_notes(notes)
         logs.log("info", "note created", note_id=note["id"], voter=voter, cycle=cycle_id)
-        self._send_json(note, status=HTTPStatus.CREATED)
+        self._send_json(self._sanitize_note(note, voter), status=HTTPStatus.CREATED)
 
     def _handle_vote(self, note_id: str) -> None:
         payload = self._read_json()
@@ -510,7 +633,7 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
                     voters.append(voter)
                 note["votes"] = len(voters)
                 save_notes(notes)
-                self._send_json(note)
+                self._send_json(self._sanitize_note(note, voter))
                 return
         self.send_error(HTTPStatus.NOT_FOUND, "Note not found")
 
@@ -522,19 +645,48 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
         note_id = self.path.split("/api/notes/", 1)[-1]
         payload = self._read_json()
         notes = load_notes()
+        caller_hash = self._submitter_hash()
         for note in notes:
             if note.get("id") == note_id:
-                note["x"] = int(payload.get("x", note.get("x", 40)))
-                note["y"] = int(payload.get("y", note.get("y", 40)))
+                # Text edits require ownership; position changes (drag) are open to all.
                 text = payload.get("text")
                 if text is not None:
+                    if note.get("submitter_hash") != caller_hash:
+                        self._send_json({"error": "not the owner"}, status=HTTPStatus.FORBIDDEN)
+                        return
                     text = str(text).strip()
                     if text:
                         note["text"] = text[:500]
+                if "x" in payload:
+                    note["x"] = int(payload["x"])
+                if "y" in payload:
+                    note["y"] = int(payload["y"])
                 save_notes(notes)
-                self._send_json(note)
+                self._send_json(self._sanitize_note(note, caller_hash))
                 return
 
+        self.send_error(HTTPStatus.NOT_FOUND, "Note not found")
+
+    def do_DELETE(self) -> None:  # noqa: N802
+        if not self.path.startswith("/api/notes/"):
+            self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
+            return
+        note_id = self.path.split("/api/notes/", 1)[-1]
+        return self._handle_delete_note(note_id)
+
+    def _handle_delete_note(self, note_id: str) -> None:
+        caller_hash = self._submitter_hash()
+        notes = load_notes()
+        for i, note in enumerate(notes):
+            if note.get("id") == note_id:
+                if note.get("submitter_hash") != caller_hash:
+                    self._send_json({"error": "not the owner"}, status=HTTPStatus.FORBIDDEN)
+                    return
+                notes.pop(i)
+                save_notes(notes)
+                logs.log("info", "note deleted", note_id=note_id, voter=caller_hash)
+                self._send_json({"deleted": True})
+                return
         self.send_error(HTTPStatus.NOT_FOUND, "Note not found")
 
 

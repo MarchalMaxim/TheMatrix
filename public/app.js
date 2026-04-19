@@ -32,6 +32,7 @@ function showToast(message) {
 
 let dragNote = null;
 let nextRunEpochMs = null;
+let currentCycleId = null;
 
 async function requestJson(url, options = {}) {
   const response = await fetch(url, options);
@@ -46,6 +47,8 @@ function createNoteElement(note) {
   const noteEl = fragment.querySelector(".note");
   const textarea = fragment.querySelector("textarea");
   const authorEl = fragment.querySelector(".note-author");
+  const deleteBtn = fragment.querySelector(".note-delete");
+
   noteEl.dataset.id = note.id;
   noteEl.style.left = `${note.x}px`;
   noteEl.style.top = `${note.y}px`;
@@ -53,11 +56,31 @@ function createNoteElement(note) {
   textarea.value = note.text || "";
   if (authorEl) authorEl.textContent = note.author_label ? `— ${note.author_label}` : "";
 
+  if (note.is_owner) {
+    // Show delete button only to the creator
+    deleteBtn.style.display = "block";
+    deleteBtn.addEventListener("click", async () => {
+      if (!confirm("Delete this post-it?")) return;
+      try {
+        const resp = await fetch(`/api/notes/${note.id}`, { method: "DELETE" });
+        if (!resp.ok) throw new Error(`${resp.status}`);
+        noteEl.remove();
+        showToast("Post-it deleted");
+      } catch (_err) {
+        showToast("Could not delete that post-it.");
+      }
+    });
+  } else {
+    // Non-owners: read-only text; drag still works
+    textarea.readOnly = true;
+  }
+
   noteEl.addEventListener("dragstart", () => {
     dragNote = noteEl;
   });
 
   textarea.addEventListener("change", async () => {
+    if (textarea.readOnly) return;
     try {
       await requestJson(`/api/notes/${note.id}`, {
         method: "PUT",
@@ -111,18 +134,32 @@ async function refreshWorkerStatus() {
     nextRunEpochMs = typeof status.next_run_epoch === "number" ? status.next_run_epoch * 1000 : null;
     lastSummary.textContent = status.summary || "Waiting for the first generation briefing...";
     updateGenerationCountdown();
+
+    // Detect cycle rollover: server cleared the board — reload notes.
+    if (status.cycle_id && status.cycle_id !== currentCycleId) {
+      if (currentCycleId !== null) {
+        // A new cycle started while the user was on the page — flush stale notes.
+        canvas.innerHTML = "";
+        await loadNotes();
+        showToast("✨ New cycle — the board has been reset!");
+      }
+      currentCycleId = status.cycle_id;
+    }
   } catch (_error) {
     lastSummary.textContent = "Could not fetch the current generation status.";
   }
 }
 
 async function createNewNote() {
+  const text = window.prompt("What's your tiny whimsical idea?", "");
+  if (text === null || text.trim() === "") return;
+
   try {
     const note = await requestJson("/api/notes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        text: "A tiny whimsical idea...",
+        text: text.trim(),
         x: 30 + Math.floor(Math.random() * 260),
         y: 20 + Math.floor(Math.random() * 200),
         color: pickRandomColor(),
@@ -170,6 +207,9 @@ canvas.addEventListener("drop", async (event) => {
 
 newNoteBtn.addEventListener("click", createNewNote);
 
+// Seed cycle_id before first status poll so a cycle already in progress
+// doesn't trigger a spurious board flush.
+requestJson("/api/cycle/current").then((c) => { currentCycleId = c.cycle_id || null; }).catch(() => {});
 loadNotes();
 updateBigClock();
 updateGenerationCountdown();
