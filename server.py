@@ -31,6 +31,8 @@ STOPWORDS = {
     "that", "the", "this", "to", "we", "with",
 }
 
+PUBLIC_RUN_FIELDS = ("run_id", "cycle_id", "status", "created_at", "started_at", "finished_at", "pr_url")
+
 NOTES_LOCK = threading.Lock()
 WORKER_STATE_LOCK = threading.Lock()
 WORKER_STATE: dict[str, Any] = {
@@ -400,11 +402,22 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         if self.path == "/api/notes":
-            self._send_json(load_notes())
-            return
+            self._send_json(load_notes()); return
         if self.path == "/api/worker-status":
-            self._send_json(get_worker_status())
-            return
+            self._send_json(get_worker_status()); return
+        if self.path == "/api/runs":
+            runs = storage.read_json(storage.RUNS_PATH, default=[])
+            sanitised = [{k: r.get(k) for k in PUBLIC_RUN_FIELDS} for r in runs[-10:]]
+            self._send_json(sanitised); return
+        if self.path == "/api/cycle/current":
+            self._send_json(storage.read_json(storage.CURRENT_CYCLE_PATH, default={})); return
+        cycle_match = re.match(r"^/api/cycle/([^/]+)$", self.path)
+        if cycle_match:
+            cycle_id = cycle_match.group(1)
+            archive = storage.read_json(storage.CYCLES_DIR / f"{cycle_id}.json", default=None)
+            if archive is None:
+                self.send_error(HTTPStatus.NOT_FOUND, "Not Found"); return
+            self._send_json(archive); return
         return super().do_GET()
 
     def _client_ip(self) -> str:

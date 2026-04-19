@@ -198,5 +198,41 @@ class CreateNoteHardeningTests(unittest.TestCase):
             self.assertEqual(e.code, 429)
 
 
+class ReadEndpointsTests(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.TemporaryDirectory()
+        self.url, self.stop = _start_server(Path(self.tmp.name))
+        self.addCleanup(self.tmp.cleanup)
+        self.addCleanup(self.stop)
+
+    def test_runs_endpoint_returns_sanitised_list(self):
+        storage.write_json(storage.RUNS_PATH, [{
+            "run_id": "r1", "cycle_id": "c1", "status": "applied",
+            "created_at": "x", "started_at": "y", "finished_at": "z",
+            "agent_run_url": "https://gh/run/1", "pr_url": "https://gh/pr/2",
+            "artifact_path": "/tmp/a", "error": "internal: secret",
+        }])
+        with urllib.request.urlopen(f"{self.url}/api/runs") as resp:
+            data = json.loads(resp.read())
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["run_id"], "r1")
+        self.assertNotIn("error", data[0])
+        self.assertNotIn("artifact_path", data[0])
+
+    def test_cycle_current_returns_current(self):
+        storage.write_json(storage.CURRENT_CYCLE_PATH, {"cycle_id": "c-now", "started_at": "x", "ends_at": "y"})
+        with urllib.request.urlopen(f"{self.url}/api/cycle/current") as resp:
+            data = json.loads(resp.read())
+        self.assertEqual(data["cycle_id"], "c-now")
+
+    def test_cycle_by_id_returns_archive(self):
+        storage.CYCLES_DIR.mkdir(parents=True, exist_ok=True)
+        storage.write_json(storage.CYCLES_DIR / "old.json", {"cycle_id": "old", "summary": "s"})
+        with urllib.request.urlopen(f"{self.url}/api/cycle/old") as resp:
+            data = json.loads(resp.read())
+        self.assertEqual(data["cycle_id"], "old")
+
+
 if __name__ == "__main__":
     unittest.main()
