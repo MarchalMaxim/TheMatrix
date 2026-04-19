@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TheMatrix</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>TheMatrix ✨</h1>
+      <p>Drop your tiny ideas on the wall.</p>
+      <section id="generation-attraction" aria-live="polite">
+        <p class="attraction-label">⏳ Countdown to the next website generation</p>
+        <p id="generation-countdown" class="countdown">15:00</p>
+        <p id="big-clock" class="big-clock">--:--:--</p>
+        <p id="last-summary" class="last-summary">Waiting for the first generation briefing...</p>
+      </section>
+      <button id="new-note-btn" type="button">+ New post-it</button>
+    </header>
+    <main id="canvas" aria-label="Post-it canvas"></main>
+    <template id="note-template">
+      <article class="note" draggable="true">
+        <textarea maxlength="500" aria-label="Post-it content"></textarea>
+      </article>
+    </template>
+    <script src="/app.js"></script>
+  </body>
+</html>
