@@ -48,5 +48,33 @@ class ContentLintTests(unittest.TestCase):
                 self.assertTrue(reason)
 
 
+class PoWTests(unittest.TestCase):
+    def _solve(self, challenge: str, difficulty_bits: int) -> str:
+        import hashlib
+        nonce = 0
+        while True:
+            digest = hashlib.sha256(f"{challenge}:{nonce}".encode("utf-8")).digest()
+            bits = int.from_bytes(digest, "big").bit_length()
+            leading_zero_bits = 256 - bits
+            if leading_zero_bits >= difficulty_bits:
+                return str(nonce)
+            nonce += 1
+
+    def test_verify_accepts_valid_pow(self):
+        challenge = "cycle-1:hashabc:202604190900"
+        nonce = self._solve(challenge, 12)
+        self.assertTrue(abuse.verify_pow(challenge, nonce, difficulty_bits=12))
+
+    def test_verify_rejects_wrong_nonce(self):
+        self.assertFalse(abuse.verify_pow("c", "0", difficulty_bits=12))
+
+    def test_make_challenge_deterministic_per_minute_bucket(self):
+        a = abuse.make_pow_challenge("cycle-1", "hashabc", minute_bucket=1234)
+        b = abuse.make_pow_challenge("cycle-1", "hashabc", minute_bucket=1234)
+        self.assertEqual(a, b)
+        c = abuse.make_pow_challenge("cycle-1", "hashabc", minute_bucket=1235)
+        self.assertNotEqual(a, c)
+
+
 if __name__ == "__main__":
     unittest.main()

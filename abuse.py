@@ -30,3 +30,37 @@ def lint_submission(text: str) -> tuple[bool, str]:
         if pattern.search(stripped):
             return False, f"submission matched suspicious pattern: {pattern.pattern}"
     return True, ""
+
+
+import time
+
+POW_DIFFICULTY_SUBMIT = 18
+POW_DIFFICULTY_VOTE = 14
+
+
+def make_pow_challenge(cycle_id: str, submitter_hash_value: str, minute_bucket: int | None = None) -> str:
+    if minute_bucket is None:
+        minute_bucket = int(time.time() // 60)
+    return f"{cycle_id}:{submitter_hash_value}:{minute_bucket}"
+
+
+def _leading_zero_bits(digest: bytes) -> int:
+    count = 0
+    for byte in digest:
+        if byte == 0:
+            count += 8
+            continue
+        # count leading zero bits in this byte
+        for shift in range(7, -1, -1):
+            if (byte >> shift) & 1:
+                return count
+            count += 1
+        return count
+    return count
+
+
+def verify_pow(challenge: str, nonce: str, difficulty_bits: int) -> bool:
+    if not isinstance(nonce, str) or not nonce:
+        return False
+    digest = hashlib.sha256(f"{challenge}:{nonce}".encode("utf-8")).digest()
+    return _leading_zero_bits(digest) >= difficulty_bits
