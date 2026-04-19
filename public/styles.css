@@ -69,6 +69,18 @@ button {
   cursor: pointer;
 }
 
+#trigger-cycle-btn {
+  background: rgba(0, 0, 0, 0.1);
+  color: #34495e;
+  font-size: 0.82rem;
+  margin-left: 0.5rem;
+}
+
+#trigger-cycle-btn:hover:not(:disabled) {
+  background: #f0c040;
+  color: #333;
+}
+
 #canvas {
   position: relative;
   min-height: calc(100vh - 130px);

@@ -36,6 +36,8 @@ PUBLIC_RUN_FIELDS = ("run_id", "cycle_id", "status", "created_at", "started_at",
 
 NOTES_LOCK = threading.Lock()
 WORKER_STATE_LOCK = threading.Lock()
+# Set this event to wake the worker early (debug / manual trigger)
+_TRIGGER_EVENT = threading.Event()
 WORKER_STATE: dict[str, Any] = {
     "summary": "Waiting for the first summary cycle...",
     "top_topics": [],
@@ -245,17 +247,33 @@ def close_cycle() -> str:
 def run_worker() -> None:
     existing = storage.read_json(storage.CURRENT_CYCLE_PATH, default=None)
     if existing is None:
-        open_cycle()
+        cycle = open_cycle()
+        started_ts = time.time()
     else:
-        # Seed cycle_id into WORKER_STATE so the frontend can track cycle changes.
+        cycle = existing
         with WORKER_STATE_LOCK:
             WORKER_STATE["cycle_id"] = existing.get("cycle_id")
-    while True:
-        time.sleep(WORKER_INTERVAL_SECONDS)
         try:
-            close_cycle()
+            started_ts = datetime.fromisoformat(existing["started_at"]).timestamp()
+        except (KeyError, ValueError):
+            started_ts = time.time()
+
+    # Initialise the countdown so the frontend shows a real value immediately.
+    next_run = started_ts + WORKER_INTERVAL_SECONDS
+    with WORKER_STATE_LOCK:
+        WORKER_STATE["next_run_epoch"] = next_run
+
+    while True:
+        # Sleep until next scheduled run OR until manually triggered.
+        wait_secs = max(0.0, next_run - time.time())
+        _TRIGGER_EVENT.wait(timeout=wait_secs)
+        _TRIGGER_EVENT.clear()
+        try:
+            close_cycle()  # updates WORKER_STATE["next_run_epoch"] internally
         except Exception as exc:
             logs.log("error", f"close_cycle failed: {exc}")
+        with WORKER_STATE_LOCK:
+            next_run = WORKER_STATE.get("next_run_epoch") or (time.time() + WORKER_INTERVAL_SECONDS)
 
 
 RUN_POLLER_INTERVAL_SECONDS = 10
@@ -467,6 +485,7 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
             ts = html_mod.escape(entry.get("ts", ""))
             log_lines.append(f"<li>[{ts}] <b>{level}</b> {msg}</li>")
 
+        token_esc = html_mod.escape(self._logs_token() or "")
         return (
             "<!doctype html><html><head><meta charset=utf-8>"
             "<title>TheMatrix — Operator Logs</title>"
@@ -474,8 +493,14 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
             "table{border-collapse:collapse;width:100%}"
             "td,th{border:1px solid #ccc;padding:0.4rem 0.6rem;text-align:left}"
             "ul{list-style:none;padding:0}li{margin:0.2rem 0}"
+            "button{cursor:pointer}"
             "</style></head><body>"
             "<h1>Operator Logs</h1>"
+            "<p>"
+            "<button onclick=\"fetch('/api/trigger-cycle',{method:'POST'}).then(()=>location.reload())\">"
+            "⚡ Trigger cycle now"
+            "</button>"
+            "</p>"
             "<h2>Run Queue</h2>"
             f"<table><tr><th>run_id</th><th>cycle_id</th><th>status</th><th>action</th></tr>"
             f"{''.join(rows)}</table>"
@@ -550,10 +575,18 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
             return self._handle_create_note()
         if self.path == "/logs/merge":
             return self._handle_logs_merge()
+        if self.path == "/api/trigger-cycle":
+            return self._handle_trigger_cycle()
         vote_match = re.match(r"^/api/notes/([^/]+)/vote$", self.path)
         if vote_match:
             return self._handle_vote(vote_match.group(1))
         self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
+
+    def _handle_trigger_cycle(self) -> None:
+        """Debug endpoint: wake the worker early to close the current cycle now."""
+        _TRIGGER_EVENT.set()
+        logs.log("info", "cycle trigger requested", ip=self._client_ip())
+        self._send_json({"triggered": True})
 
     def _handle_logs_merge(self) -> None:
         """Mock-merge action: only works when AGENT.is_mock is True."""

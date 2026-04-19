@@ -1,0 +1,5 @@
+body { background: #fff5f7; color: #34495e; font-family: "Trebuchet MS", sans-serif; }
+h1 { color: #ff7faa; transform: rotate(3deg); }
+.note { background: #fff5f7; border-color: #ff7faa; }
+button { background: #ff7faa; }
+#generation-attraction { border-color: #ff7faa; }
