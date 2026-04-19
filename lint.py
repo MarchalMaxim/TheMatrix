@@ -121,3 +121,61 @@ def sanitise_css(css: str) -> tuple[bool, str, str]:
     if CSS_URL_DANGEROUS_BARE.search(css):
         return False, "", "css url() points to disallowed target (unbalanced)"
     return True, css, ""
+
+
+import json as _json
+import shutil
+from dataclasses import dataclass
+from pathlib import Path
+
+import storage
+
+GENERATED_DIR = storage.GENERATED_DIR
+LAST_GOOD_DIR = storage.LAST_GOOD_DIR
+
+
+@dataclass
+class ApplyResult:
+    applied: bool
+    reason: str = ""
+
+
+def apply_artifact(artifact: dict) -> ApplyResult:
+    GENERATED_DIR.mkdir(parents=True, exist_ok=True)
+    LAST_GOOD_DIR.mkdir(parents=True, exist_ok=True)
+
+    theme_css = artifact.get("theme_css", "")
+    slots = artifact.get("slots", {})
+
+    css_ok, css_clean, css_reason = sanitise_css(theme_css)
+    if not css_ok:
+        return ApplyResult(False, css_reason)
+
+    cleaned_slots: dict[str, str] = {}
+    for name, html in slots.items():
+        ok, clean, reason = sanitise_html(html)
+        if not ok:
+            return ApplyResult(False, f"slot '{name}': {reason}")
+        cleaned_slots[name] = clean
+
+    theme_path = GENERATED_DIR / "theme.css"
+    slots_path = GENERATED_DIR / "slots.json"
+    theme_path.write_text(css_clean, encoding="utf-8")
+    slots_path.write_text(_json.dumps(cleaned_slots, indent=2), encoding="utf-8")
+
+    # update last-good
+    shutil.copy2(theme_path, LAST_GOOD_DIR / "theme.css")
+    shutil.copy2(slots_path, LAST_GOOD_DIR / "slots.json")
+
+    return ApplyResult(True)
+
+
+def restore_last_good() -> bool:
+    src_css = LAST_GOOD_DIR / "theme.css"
+    src_slots = LAST_GOOD_DIR / "slots.json"
+    if not src_css.exists() or not src_slots.exists():
+        return False
+    GENERATED_DIR.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src_css, GENERATED_DIR / "theme.css")
+    shutil.copy2(src_slots, GENERATED_DIR / "slots.json")
+    return True

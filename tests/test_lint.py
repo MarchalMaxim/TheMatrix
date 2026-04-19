@@ -89,5 +89,84 @@ class CssLintTests(unittest.TestCase):
         self.assertFalse(ok)
 
 
+import json
+import shutil
+import tempfile
+from pathlib import Path
+from unittest import mock
+
+
+class ApplyTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.gen = Path(self.tmp.name) / "generated"
+        self.last_good = self.gen / ".last_good"
+        self.gen.mkdir(parents=True)
+        self.last_good.mkdir()
+        patcher_gen = mock.patch.object(lint, "GENERATED_DIR", self.gen)
+        patcher_lg = mock.patch.object(lint, "LAST_GOOD_DIR", self.last_good)
+        patcher_gen.start()
+        patcher_lg.start()
+        self.addCleanup(patcher_gen.stop)
+        self.addCleanup(patcher_lg.stop)
+        self.addCleanup(self.tmp.cleanup)
+
+    def test_apply_writes_theme_and_slots(self):
+        result = lint.apply_artifact({
+            "theme_css": "body { background: pink; }",
+            "slots": {"intro": "<p>hi</p>"},
+        })
+        self.assertTrue(result.applied)
+        self.assertEqual(
+            (self.gen / "theme.css").read_text(encoding="utf-8"),
+            "body { background: pink; }",
+        )
+        self.assertEqual(
+            json.loads((self.gen / "slots.json").read_text(encoding="utf-8")),
+            {"intro": "<p>hi</p>"},
+        )
+
+    def test_apply_rejects_bad_css_and_keeps_last_good(self):
+        # seed last_good with a known artifact
+        (self.last_good / "theme.css").write_text("body { background: lime; }")
+        (self.last_good / "slots.json").write_text(json.dumps({"intro": "<p>old</p>"}))
+        # also seed live so we can confirm replacement
+        (self.gen / "theme.css").write_text("body { background: lime; }")
+        (self.gen / "slots.json").write_text(json.dumps({"intro": "<p>old</p>"}))
+
+        result = lint.apply_artifact({
+            "theme_css": "@import url('//evil.com/a.css');",
+            "slots": {"intro": "<p>ok</p>"},
+        })
+        self.assertFalse(result.applied)
+        self.assertIn("import", result.reason.lower())
+        self.assertEqual(
+            (self.gen / "theme.css").read_text(encoding="utf-8"),
+            "body { background: lime; }",
+        )
+
+    def test_apply_rejects_bad_slot_html(self):
+        result = lint.apply_artifact({
+            "theme_css": "body { background: pink; }",
+            "slots": {"intro": "<script>alert(1)</script>"},
+        })
+        self.assertFalse(result.applied)
+        self.assertIn("script", result.reason.lower())
+
+    def test_successful_apply_updates_last_good(self):
+        lint.apply_artifact({
+            "theme_css": "body { color: red; }",
+            "slots": {"intro": "<p>v1</p>"},
+        })
+        lint.apply_artifact({
+            "theme_css": "body { color: blue; }",
+            "slots": {"intro": "<p>v2</p>"},
+        })
+        self.assertEqual(
+            (self.last_good / "theme.css").read_text(encoding="utf-8"),
+            "body { color: blue; }",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
