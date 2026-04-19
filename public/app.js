@@ -5,6 +5,31 @@ const bigClock = document.getElementById("big-clock");
 const generationCountdown = document.getElementById("generation-countdown");
 const lastSummary = document.getElementById("last-summary");
 
+const NOTE_PALETTE = [
+  "#ffe98f", "#ffd1dc", "#c8f7c5", "#c5e3ff", "#ffd9b3",
+  "#e0c8ff", "#fff5b3", "#b3f0e8", "#ffc8c8", "#d9f0a3",
+];
+
+function pickRandomColor() {
+  return NOTE_PALETTE[Math.floor(Math.random() * NOTE_PALETTE.length)];
+}
+
+let toastTimer = null;
+function showToast(message) {
+  let el = document.querySelector(".toast");
+  if (!el) {
+    el = document.createElement("div");
+    el.className = "toast";
+    document.body.appendChild(el);
+  }
+  el.textContent = message;
+  // force reflow so transitions retrigger
+  void el.offsetWidth;
+  el.classList.add("show");
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2500);
+}
+
 let dragNote = null;
 let nextRunEpochMs = null;
 
@@ -20,11 +45,13 @@ function createNoteElement(note) {
   const fragment = noteTemplate.content.cloneNode(true);
   const noteEl = fragment.querySelector(".note");
   const textarea = fragment.querySelector("textarea");
+  const authorEl = fragment.querySelector(".note-author");
   noteEl.dataset.id = note.id;
   noteEl.style.left = `${note.x}px`;
   noteEl.style.top = `${note.y}px`;
   noteEl.style.background = note.color || "#ffe98f";
   textarea.value = note.text || "";
+  if (authorEl) authorEl.textContent = note.author_label ? `— ${note.author_label}` : "";
 
   noteEl.addEventListener("dragstart", () => {
     dragNote = noteEl;
@@ -98,10 +125,16 @@ async function createNewNote() {
         text: "A tiny whimsical idea...",
         x: 30 + Math.floor(Math.random() * 260),
         y: 20 + Math.floor(Math.random() * 200),
-        color: "#ffe98f",
+        color: pickRandomColor(),
       }),
     });
-    canvas.appendChild(createNoteElement(note));
+    const noteEl = createNoteElement(note);
+    noteEl.classList.add("just-added");
+    canvas.appendChild(noteEl);
+    // scroll the new note into view + remove the highlight after the animation
+    noteEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    setTimeout(() => noteEl.classList.remove("just-added"), 1200);
+    showToast(note.author_label ? `Posted as ${note.author_label}` : "Post-it added");
   } catch (_error) {
     alert("Could not create a new post-it.");
   }

@@ -21,7 +21,9 @@
     <main id="canvas" aria-label="Post-it canvas"></main>
     <template id="note-template">
       <article class="note" draggable="true">
+        <div class="note-grip" aria-hidden="true">⋮⋮ drag</div>
         <textarea maxlength="500" aria-label="Post-it content"></textarea>
+        <div class="note-author" aria-label="Author"></div>
       </article>
     </template>
     <script src="/app.js"></script>

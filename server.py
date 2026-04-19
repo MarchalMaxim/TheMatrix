@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import threading
@@ -11,6 +12,22 @@ from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+
+ANIMAL_ADJ = [
+    "misty", "brave", "lazy", "quick", "wise", "bold", "calm", "loud",
+    "tiny", "wild", "swift", "merry", "sleepy", "snappy", "fuzzy", "feral",
+]
+ANIMAL_NOUN = [
+    "fox", "otter", "cat", "owl", "wolf", "bee", "frog", "crow",
+    "lynx", "mole", "bat", "hare", "stag", "newt", "wren", "lark",
+]
+
+
+def author_label_from_ip(ip: str) -> str:
+    digest = hashlib.sha256(ip.encode("utf-8")).digest()
+    adj = ANIMAL_ADJ[digest[0] % len(ANIMAL_ADJ)]
+    noun = ANIMAL_NOUN[digest[1] % len(ANIMAL_NOUN)]
+    return f"{adj} {noun}"
 
 ROOT = Path(__file__).resolve().parent
 PUBLIC_DIR = ROOT / "public"
@@ -206,6 +223,7 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
             "y": int(payload.get("y", 40)),
             "color": str(payload.get("color", "#ffe98f"))[:20],
             "createdAt": datetime.now(timezone.utc).isoformat(),
+            "author_label": author_label_from_ip(self.client_address[0]),
         }
         notes = load_notes()
         notes.append(note)
