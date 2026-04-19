@@ -66,10 +66,10 @@ import secrets
 
 
 def get_daily_salt(today: str) -> str:
-    record = read_json(SALT_PATH, default={})
-    if record.get("date") == today and record.get("salt"):
-        return record["salt"]
-    salt = secrets.token_hex(16)
     with with_lock(SALT_PATH):
+        record = read_json(SALT_PATH, default={})
+        if record.get("date") == today and record.get("salt"):
+            return record["salt"]
+        salt = secrets.token_hex(16)
         write_json(SALT_PATH, {"date": today, "salt": salt})
-    return salt
+        return salt
