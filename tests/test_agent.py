@@ -87,8 +87,10 @@ class FactoryTests(unittest.TestCase):
             adapter = agent.make_agent()
             self.assertTrue(adapter.is_mock)
 
-    def test_kind_github_returns_github_skeleton(self):
-        with mock.patch.dict(os.environ, {"AGENT_KIND": "github"}):
+    def test_kind_github_returns_github_adapter(self):
+        env = {"AGENT_KIND": "github", "GITHUB_TOKEN": "t",
+               "GITHUB_OWNER": "o", "GITHUB_REPO": "r"}
+        with mock.patch.dict(os.environ, env, clear=False):
             adapter = agent.make_agent()
             self.assertFalse(adapter.is_mock)
             self.assertIsInstance(adapter, agent.GithubActionsAgent)
@@ -99,24 +101,8 @@ class FactoryTests(unittest.TestCase):
                 agent.make_agent()
 
 
-class GithubActionsSkeletonTests(unittest.TestCase):
-    def test_kick_off_not_implemented(self):
-        adapter = agent.GithubActionsAgent()
-        with self.assertRaises(NotImplementedError):
-            adapter.kick_off(_handoff())
-
-    def test_poll_not_implemented(self):
-        adapter = agent.GithubActionsAgent()
-        with self.assertRaises(NotImplementedError):
-            adapter.poll("any")
-
-    def test_fetch_artifact_not_implemented(self):
-        adapter = agent.GithubActionsAgent()
-        with self.assertRaises(NotImplementedError):
-            adapter.fetch_artifact("any")
-
-    def test_is_mock_false(self):
-        self.assertFalse(agent.GithubActionsAgent().is_mock)
+# Note: Real behaviour of GithubActionsAgent (kick_off / poll / fetch_artifact
+# with mocked HTTP) lives in tests/test_github_agent.py.
 
 
 class FixesTests(unittest.TestCase):

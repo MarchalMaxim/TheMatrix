@@ -18,11 +18,16 @@ run. The adapter only needs to report `queued | running | needs_merge | merged`
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import threading
 import time
+import urllib.error
+import urllib.request
 import uuid
+import zipfile
 from dataclasses import dataclass, field
+from io import BytesIO
 from typing import Any, Protocol, TypedDict, runtime_checkable
 
 
@@ -160,30 +165,190 @@ class MockGithubAgent:
 
 
 class GithubActionsAgent:
-    """v2 skeleton: kicks off a workflow_dispatch on a coding-agent workflow,
-    polls workflow_run status + linked PR state, downloads artifact on merge.
+    """Live adapter that dispatches a GitHub Actions workflow and downloads
+    the artifact it produces.
 
-    Intentionally NotImplementedError throughout in v1 so the protocol is
-    exercised structurally without committing to a real network impl yet.
-    Wiring the real calls is its own task.
+    Flow:
+      1. kick_off() generates a unique handoff_id and POSTs a workflow_dispatch
+         with the handoff payload as inputs. Returns the handoff_id as run_id.
+      2. The workflow's `run-name: matrix-handoff-${{ inputs.handoff_id }}` makes
+         each run findable. poll() lists recent workflow runs and matches by name.
+      3. When the workflow completes successfully we treat that as `merged`
+         (the workflow's success is the approval gate — no separate PR step).
+      4. fetch_artifact() downloads the artifact zip, extracts theme.css and
+         slots.json, and returns them as an Artifact.
+
+    Required env vars:
+      GITHUB_TOKEN        — PAT or fine-grained token (actions:write, contents:read)
+      GITHUB_OWNER        — repo owner / org
+      GITHUB_REPO         — repo name
+      GITHUB_WORKFLOW_FILE — workflow filename (default: matrix-handoff.yml)
+      GITHUB_REF          — branch/tag to dispatch on (default: main)
     """
 
     is_mock = False
+    _API = "https://api.github.com"
+
+    def __init__(self, *, http_open: Any | None = None) -> None:
+        # http_open is injected for tests; defaults to urllib.request.urlopen
+        self._http_open = http_open or urllib.request.urlopen
+        self.token = os.environ.get("GITHUB_TOKEN") or ""
+        self.owner = os.environ.get("GITHUB_OWNER") or ""
+        self.repo = os.environ.get("GITHUB_REPO") or ""
+        self.workflow = os.environ.get("GITHUB_WORKFLOW_FILE") or "matrix-handoff.yml"
+        self.ref = os.environ.get("GITHUB_REF") or "main"
+        if not (self.token and self.owner and self.repo):
+            raise AgentError(
+                "GithubActionsAgent requires GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO env vars"
+            )
+
+    # ------------------------------------------------------------------
+    # HTTP plumbing
+    # ------------------------------------------------------------------
+
+    def _request(self, method: str, path: str, body: dict | None = None,
+                 *, accept: str = "application/vnd.github+json") -> tuple[int, bytes]:
+        url = path if path.startswith("http") else f"{self._API}{path}"
+        data = json.dumps(body).encode("utf-8") if body is not None else None
+        headers = {
+            "Accept": accept,
+            "Authorization": f"Bearer {self.token}",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "TheMatrix-agent/1.0",
+        }
+        if data is not None:
+            headers["Content-Type"] = "application/json"
+        req = urllib.request.Request(url, data=data, headers=headers, method=method)
+        try:
+            with self._http_open(req, timeout=30) as resp:
+                return resp.status, resp.read()
+        except urllib.error.HTTPError as exc:
+            detail = ""
+            try:
+                detail = exc.read().decode("utf-8", "ignore")[:300]
+            except Exception:  # noqa: BLE001
+                pass
+            raise AgentError(f"GitHub API {method} {path}: HTTP {exc.code}: {detail}") from exc
+        except (urllib.error.URLError, OSError, TimeoutError) as exc:
+            raise AgentError(f"GitHub API network error on {method} {path}: {exc}") from exc
+
+    def _api_json(self, method: str, path: str, body: dict | None = None) -> dict:
+        status, raw = self._request(method, path, body)
+        if not raw:
+            return {}
+        try:
+            return json.loads(raw.decode("utf-8"))
+        except json.JSONDecodeError as exc:
+            raise AgentError(f"GitHub API returned non-JSON for {path}: {exc}") from exc
+
+    # ------------------------------------------------------------------
+    # Adapter API
+    # ------------------------------------------------------------------
 
     def kick_off(self, handoff: Handoff) -> str:
-        # POST /repos/:owner/:repo/actions/workflows/:id/dispatches
-        # then locate the run via /actions/runs?event=workflow_dispatch&created>=<ts>
-        raise NotImplementedError("GithubActionsAgent.kick_off — wire in v2")
+        handoff_id = uuid.uuid4().hex[:12]
+        notes_json = json.dumps(handoff.get("notes", []))
+        # GitHub workflow_dispatch inputs are limited to ~65KB total. Trim
+        # aggressively — the workflow only needs enough context to prompt the
+        # generator.
+        body = {
+            "ref": self.ref,
+            "inputs": {
+                "handoff_id": handoff_id,
+                "summary": (handoff.get("summary", "") or "")[:1000],
+                "notes_json": notes_json[:60000],
+            },
+        }
+        # Dispatch returns 204 No Content with no body
+        self._request(
+            "POST",
+            f"/repos/{self.owner}/{self.repo}/actions/workflows/{self.workflow}/dispatches",
+            body,
+        )
+        return handoff_id
+
+    def _find_run(self, handoff_id: str) -> dict | None:
+        """Look through the most recent runs of our workflow for one whose
+        run-name embeds our handoff_id."""
+        data = self._api_json(
+            "GET",
+            f"/repos/{self.owner}/{self.repo}/actions/workflows/{self.workflow}/runs?per_page=30",
+        )
+        marker = f"matrix-handoff-{handoff_id}"
+        for run in data.get("workflow_runs", []):
+            name = (run.get("name") or "") + " " + (run.get("display_title") or "")
+            if marker in name or handoff_id in name:
+                return run
+        return None
 
     def poll(self, run_id: str) -> RunStatus:
-        # GET /actions/runs/:id -> map status; if completed, look up linked PR
-        # PR.merged == True -> RunStatus("merged", pr_url=..., agent_run_url=...)
-        # PR open and CI green -> RunStatus("needs_merge", ...)
-        raise NotImplementedError("GithubActionsAgent.poll — wire in v2")
+        run = self._find_run(run_id)
+        if run is None:
+            # Dispatch may take a few seconds before the run appears
+            return RunStatus(status="queued", detail="awaiting workflow scheduling")
+        run_url = run.get("html_url")
+        gh_status = run.get("status")          # queued | in_progress | completed
+        gh_conclusion = run.get("conclusion")  # success | failure | cancelled | ...
+        if gh_status == "queued":
+            return RunStatus(status="queued", agent_run_url=run_url)
+        if gh_status == "in_progress":
+            return RunStatus(status="running", agent_run_url=run_url)
+        if gh_status == "completed":
+            if gh_conclusion == "success":
+                # Workflow success IS the merge gate for this adapter
+                return RunStatus(status="merged", detail="workflow succeeded",
+                                 agent_run_url=run_url)
+            return RunStatus(status="failed", agent_run_url=run_url,
+                             error=f"workflow {gh_conclusion or 'failed'}")
+        # Unknown status — treat as still running
+        return RunStatus(status="running", agent_run_url=run_url,
+                         detail=f"unknown gh status {gh_status!r}")
 
     def fetch_artifact(self, run_id: str) -> Artifact:
-        # Download the workflow artifact zip; load theme.css + slots.json
-        raise NotImplementedError("GithubActionsAgent.fetch_artifact — wire in v2")
+        run = self._find_run(run_id)
+        if run is None:
+            raise AgentError(f"no GitHub run found for handoff {run_id}")
+        if run.get("status") != "completed" or run.get("conclusion") != "success":
+            raise AgentError(
+                f"workflow not yet successful (status={run.get('status')}, "
+                f"conclusion={run.get('conclusion')})"
+            )
+        gh_run_id = run["id"]
+        artifacts = self._api_json(
+            "GET",
+            f"/repos/{self.owner}/{self.repo}/actions/runs/{gh_run_id}/artifacts",
+        )
+        items = artifacts.get("artifacts", [])
+        if not items:
+            raise AgentError(f"no artifacts on run {gh_run_id}")
+        # Pick the artifact whose name matches our naming scheme; fall back to first
+        chosen = next(
+            (a for a in items if run_id in (a.get("name") or "")),
+            items[0],
+        )
+        download_path = (
+            f"/repos/{self.owner}/{self.repo}/actions/artifacts/{chosen['id']}/zip"
+        )
+        _, zip_bytes = self._request("GET", download_path)
+        return self._parse_artifact_zip(zip_bytes)
+
+    @staticmethod
+    def _parse_artifact_zip(zip_bytes: bytes) -> Artifact:
+        css = ""
+        slots: dict[str, str] = {}
+        try:
+            with zipfile.ZipFile(BytesIO(zip_bytes)) as zf:
+                for name in zf.namelist():
+                    base = name.rsplit("/", 1)[-1]
+                    if base == "theme.css":
+                        css = zf.read(name).decode("utf-8")
+                    elif base == "slots.json":
+                        slots = json.loads(zf.read(name).decode("utf-8"))
+        except (zipfile.BadZipFile, json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise AgentError(f"could not parse artifact zip: {exc}") from exc
+        if not css and not slots:
+            raise AgentError("artifact zip contained neither theme.css nor slots.json")
+        return Artifact(theme_css=css, slots=slots)
 
 
 def make_agent() -> AgentAdapter:
