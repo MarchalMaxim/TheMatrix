@@ -1,0 +1,57 @@
+name: matrix-handoff
+
+# CRITICAL: this run-name embeds the handoff_id so GithubActionsAgent.poll()
+# can find this run by listing recent workflow runs and matching the name.
+# Do NOT change this format without updating the agent's _find_run() too.
+run-name: matrix-handoff-${{ inputs.handoff_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      handoff_id:
+        description: "Unique correlation ID set by TheMatrix server"
+        required: true
+        type: string
+      summary:
+        description: "Cycle summary"
+        required: false
+        type: string
+        default: "no summary"
+      notes_json:
+        description: "JSON-encoded list of top notes (text, votes)"
+        required: false
+        type: string
+        default: "[]"
+
+# Restrict permissions: we only need to checkout the repo and write logs.
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate theme.css and slots.json
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          HANDOFF_ID: ${{ inputs.handoff_id }}
+          SUMMARY: ${{ inputs.summary }}
+          NOTES_JSON: ${{ inputs.notes_json }}
+        run: python scripts/generate_artifact.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: matrix-${{ inputs.handoff_id }}
+          path: artifact/
+          if-no-files-found: error
+          retention-days: 7

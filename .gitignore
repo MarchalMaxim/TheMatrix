@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 data/
 worker/
+.env
+.env.*
+!.env.example
