@@ -49,6 +49,14 @@ STOPWORDS = {
 }
 
 NOTES_LOCK = threading.Lock()
+WORKER_STATE_LOCK = threading.Lock()
+WORKER_STATE: dict[str, Any] = {
+    "summary": "Waiting for the first summary cycle...",
+    "top_topics": [],
+    "suggestions_count": 0,
+    "last_run_utc": None,
+    "next_run_epoch": None,
+}
 
 
 def ensure_storage() -> None:
@@ -118,11 +126,39 @@ def write_handoff(summary_payload: dict[str, Any], notes: list[dict[str, Any]]) 
     (WORKER_DIR / "copilot_task.md").write_text(copilot_prompt, encoding="utf-8")
 
 
+def update_worker_state(summary_payload: dict[str, Any], timestamp: datetime, next_run_epoch: float) -> None:
+    with WORKER_STATE_LOCK:
+        WORKER_STATE["summary"] = summary_payload["summary"]
+        WORKER_STATE["top_topics"] = summary_payload["top_topics"]
+        WORKER_STATE["suggestions_count"] = summary_payload["suggestions_count"]
+        WORKER_STATE["last_run_utc"] = timestamp.isoformat()
+        WORKER_STATE["next_run_epoch"] = next_run_epoch
+
+
+def get_worker_status() -> dict[str, Any]:
+    with WORKER_STATE_LOCK:
+        next_run_epoch = WORKER_STATE.get("next_run_epoch")
+        seconds_until_next_cycle = 0
+        if isinstance(next_run_epoch, (int, float)):
+            seconds_until_next_cycle = max(0, int(next_run_epoch - time.time()))
+        return {
+            "summary": WORKER_STATE["summary"],
+            "top_topics": WORKER_STATE["top_topics"],
+            "suggestions_count": WORKER_STATE["suggestions_count"],
+            "last_run_utc": WORKER_STATE["last_run_utc"],
+            "next_run_epoch": next_run_epoch,
+            "seconds_until_next_cycle": seconds_until_next_cycle,
+            "interval_seconds": WORKER_INTERVAL_SECONDS,
+        }
+
+
 def run_worker() -> None:
     while True:
+        cycle_started = datetime.now(timezone.utc)
         notes = load_notes()
         summary_payload = summarize_notes(notes)
         write_handoff(summary_payload, notes)
+        update_worker_state(summary_payload, cycle_started, time.time() + WORKER_INTERVAL_SECONDS)
         time.sleep(WORKER_INTERVAL_SECONDS)
 
 
@@ -146,6 +182,9 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         if self.path == "/api/notes":
             self._send_json(load_notes())
+            return
+        if self.path == "/api/worker-status":
+            self._send_json(get_worker_status())
             return
         return super().do_GET()
 

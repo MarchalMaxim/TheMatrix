@@ -1,8 +1,12 @@
 const canvas = document.getElementById("canvas");
 const newNoteBtn = document.getElementById("new-note-btn");
 const noteTemplate = document.getElementById("note-template");
+const bigClock = document.getElementById("big-clock");
+const generationCountdown = document.getElementById("generation-countdown");
+const lastSummary = document.getElementById("last-summary");
 
 let dragNote = null;
+let nextRunEpochMs = null;
 
 async function requestJson(url, options = {}) {
   const response = await fetch(url, options);
@@ -47,6 +51,41 @@ async function loadNotes() {
     notes.forEach((note) => canvas.appendChild(createNoteElement(note)));
   } catch (_error) {
     alert("Could not load notes from the server.");
+  }
+}
+
+function formatClock(date) {
+  return date.toLocaleTimeString("en-GB", { hour12: false });
+}
+
+function formatCountdown(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function updateBigClock() {
+  bigClock.textContent = formatClock(new Date());
+}
+
+function updateGenerationCountdown() {
+  if (typeof nextRunEpochMs !== "number") {
+    generationCountdown.textContent = "15:00";
+    return;
+  }
+
+  const seconds = Math.max(0, Math.ceil((nextRunEpochMs - Date.now()) / 1000));
+  generationCountdown.textContent = formatCountdown(seconds);
+}
+
+async function refreshWorkerStatus() {
+  try {
+    const status = await requestJson("/api/worker-status");
+    nextRunEpochMs = typeof status.next_run_epoch === "number" ? status.next_run_epoch * 1000 : null;
+    lastSummary.textContent = status.summary || "Waiting for the first generation briefing...";
+    updateGenerationCountdown();
+  } catch (_error) {
+    lastSummary.textContent = "Could not fetch the current generation status.";
   }
 }
 
@@ -99,3 +138,10 @@ canvas.addEventListener("drop", async (event) => {
 newNoteBtn.addEventListener("click", createNewNote);
 
 loadNotes();
+updateBigClock();
+updateGenerationCountdown();
+refreshWorkerStatus();
+
+setInterval(updateBigClock, 1000);
+setInterval(updateGenerationCountdown, 1000);
+setInterval(refreshWorkerStatus, 15000);

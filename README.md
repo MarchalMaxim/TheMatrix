@@ -1,6 +1,7 @@
 # TheMatrix
 
 A whimsical little board where users can place post-it notes on a shared canvas.
+The homepage now also shows a large live clock and a countdown to the next website generation cycle.
 
 ## Run locally
 

@@ -25,6 +25,40 @@ header p {
   margin: 0.3rem 0 0.8rem;
 }
 
+#generation-attraction {
+  margin: 0.4rem 0 0.8rem;
+  padding: 0.6rem 0.8rem;
+  background: rgba(255, 255, 255, 0.75);
+  border: 2px dashed #ffa6c7;
+  border-radius: 10px;
+  max-width: 640px;
+}
+
+.attraction-label {
+  margin: 0;
+  font-weight: 700;
+  color: #c95d8a;
+}
+
+.countdown {
+  margin: 0.3rem 0 0;
+  font-size: clamp(2rem, 7vw, 3.8rem);
+  line-height: 1;
+  font-weight: 900;
+  color: #2f628f;
+}
+
+.big-clock {
+  margin: 0.25rem 0 0;
+  font-size: clamp(1.1rem, 3.6vw, 1.8rem);
+  font-weight: 700;
+  color: #486d8d;
+}
+
+.last-summary {
+  margin: 0.45rem 0 0;
+}
+
 button {
   border: 0;
   border-radius: 999px;
