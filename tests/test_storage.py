@@ -50,5 +50,31 @@ class StorageTests(unittest.TestCase):
         self.assertEqual(storage.read_json(path, default={"n": 0})["n"], 20)
 
 
+class SaltTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.patcher = mock.patch.object(storage, "DATA_DIR", self.root / "data")
+        self.patcher.start()
+        self.salt_patcher = mock.patch.object(
+            storage, "SALT_PATH", self.root / "data" / "salt.json"
+        )
+        self.salt_patcher.start()
+        self.addCleanup(self.patcher.stop)
+        self.addCleanup(self.salt_patcher.stop)
+        self.addCleanup(self.tmp.cleanup)
+
+    def test_get_daily_salt_creates_one_when_missing(self):
+        salt = storage.get_daily_salt(today="2026-04-19")
+        self.assertEqual(len(salt), 32)
+        again = storage.get_daily_salt(today="2026-04-19")
+        self.assertEqual(salt, again)
+
+    def test_get_daily_salt_rotates_per_day(self):
+        a = storage.get_daily_salt(today="2026-04-19")
+        b = storage.get_daily_salt(today="2026-04-20")
+        self.assertNotEqual(a, b)
+
+
 if __name__ == "__main__":
     unittest.main()

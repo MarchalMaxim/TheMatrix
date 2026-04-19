@@ -60,3 +60,16 @@ def write_json(path: Path, value: Any) -> None:
 def ensure_dirs() -> None:
     for directory in (DATA_DIR, CYCLES_DIR, WORKER_DIR, GENERATED_DIR, LAST_GOOD_DIR):
         directory.mkdir(parents=True, exist_ok=True)
+
+
+import secrets
+
+
+def get_daily_salt(today: str) -> str:
+    record = read_json(SALT_PATH, default={})
+    if record.get("date") == today and record.get("salt"):
+        return record["salt"]
+    salt = secrets.token_hex(16)
+    with with_lock(SALT_PATH):
+        write_json(SALT_PATH, {"date": today, "salt": salt})
+    return salt
