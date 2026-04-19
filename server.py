@@ -126,7 +126,7 @@ def run_worker() -> None:
         time.sleep(WORKER_INTERVAL_SECONDS)
 
 
-class MatrixHandler(SimpleHTTPRequestHandler):
+class NoteBoardHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, directory=str(PUBLIC_DIR), **kwargs)
 
@@ -202,7 +202,7 @@ def main() -> None:
     worker = threading.Thread(target=run_worker, daemon=True)
     worker.start()
 
-    server = ThreadingHTTPServer(("127.0.0.1", 8000), MatrixHandler)
+    server = ThreadingHTTPServer(("127.0.0.1", 8000), NoteBoardHandler)
     print("TheMatrix running at http://127.0.0.1:8000")
     server.serve_forever()
 

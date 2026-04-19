@@ -18,6 +18,9 @@ class SummaryTests(unittest.TestCase):
         self.assertEqual(result["suggestions_count"], 2)
         self.assertIn("dark", result["top_topics"])
         self.assertIn("mode", result["top_topics"])
+        self.assertNotIn("please", result["top_topics"])
+        self.assertNotIn("and", result["top_topics"])
+        self.assertIn("Collected 2 suggestion", result["summary"])
 
 
 if __name__ == "__main__":
