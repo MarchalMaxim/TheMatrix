@@ -695,10 +695,20 @@ git commit -m "feat: add in-memory log ring buffer"
 Create `tests/test_agent.py`:
 
 ```python
+import os
 import unittest
 import time
+from unittest import mock
 
 import agent
+
+
+def _handoff(summary="x", topics=None):
+    return {
+        "summary": summary,
+        "top_topics": topics or [],
+        "notes": [],
+    }
 
 
 class MockAgentTests(unittest.TestCase):
@@ -708,24 +718,37 @@ class MockAgentTests(unittest.TestCase):
             running_seconds=0.05,
         )
 
+    def test_is_mock_property(self):
+        self.assertTrue(self.agent.is_mock)
+
     def test_kick_off_returns_run_id(self):
-        run_id = self.agent.kick_off({"summary": "x", "top_topics": [], "notes": []})
+        run_id = self.agent.kick_off(_handoff())
         self.assertTrue(isinstance(run_id, str))
         self.assertTrue(run_id)
 
     def test_run_progresses_through_states(self):
-        run_id = self.agent.kick_off({"summary": "make it pink", "top_topics": ["pink"], "notes": []})
+        run_id = self.agent.kick_off(_handoff("make it pink", ["pink"]))
         self.assertEqual(self.agent.poll(run_id).status, "queued")
         time.sleep(0.06)
         self.assertEqual(self.agent.poll(run_id).status, "running")
         time.sleep(0.06)
         self.assertEqual(self.agent.poll(run_id).status, "needs_merge")
 
+    def test_run_status_carries_urls(self):
+        run_id = self.agent.kick_off(_handoff("x"))
+        time.sleep(0.12)
+        status = self.agent.poll(run_id)
+        # mock fills these with placeholder/null values for protocol completeness
+        self.assertTrue(hasattr(status, "agent_run_url"))
+        self.assertTrue(hasattr(status, "pr_url"))
+        self.assertTrue(hasattr(status, "error"))
+
     def test_signal_merge_unblocks_artifact(self):
-        run_id = self.agent.kick_off({"summary": "make it green", "top_topics": ["green"], "notes": []})
+        run_id = self.agent.kick_off(_handoff("make it green", ["green"]))
         time.sleep(0.15)
         self.assertEqual(self.agent.poll(run_id).status, "needs_merge")
         self.agent.signal_merge(run_id)
+        self.assertEqual(self.agent.poll(run_id).status, "merged")
         artifact = self.agent.fetch_artifact(run_id)
         self.assertIn("theme_css", artifact)
         self.assertIn("slots", artifact)
@@ -733,8 +756,8 @@ class MockAgentTests(unittest.TestCase):
         self.assertIsInstance(artifact["slots"], dict)
 
     def test_artifact_varies_with_summary(self):
-        a_id = self.agent.kick_off({"summary": "make it pink", "top_topics": ["pink"], "notes": []})
-        b_id = self.agent.kick_off({"summary": "make it green", "top_topics": ["green"], "notes": []})
+        a_id = self.agent.kick_off(_handoff("make it pink", ["pink"]))
+        b_id = self.agent.kick_off(_handoff("make it green", ["green"]))
         time.sleep(0.15)
         self.agent.signal_merge(a_id)
         self.agent.signal_merge(b_id)
@@ -742,9 +765,55 @@ class MockAgentTests(unittest.TestCase):
         b = self.agent.fetch_artifact(b_id)
         self.assertNotEqual(a["theme_css"], b["theme_css"])
 
-    def test_unknown_run_id_raises(self):
-        with self.assertRaises(KeyError):
+    def test_unknown_run_id_raises_agent_error(self):
+        with self.assertRaises(agent.AgentError):
             self.agent.poll("nope")
+        with self.assertRaises(agent.AgentError):
+            self.agent.fetch_artifact("nope")
+
+
+class FactoryTests(unittest.TestCase):
+    def test_default_kind_is_mock(self):
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("AGENT_KIND", None)
+            adapter = agent.make_agent()
+            self.assertTrue(adapter.is_mock)
+
+    def test_kind_mock_returns_mock(self):
+        with mock.patch.dict(os.environ, {"AGENT_KIND": "mock"}):
+            adapter = agent.make_agent()
+            self.assertTrue(adapter.is_mock)
+
+    def test_kind_github_returns_github_skeleton(self):
+        with mock.patch.dict(os.environ, {"AGENT_KIND": "github"}):
+            adapter = agent.make_agent()
+            self.assertFalse(adapter.is_mock)
+            self.assertIsInstance(adapter, agent.GithubActionsAgent)
+
+    def test_unknown_kind_raises(self):
+        with mock.patch.dict(os.environ, {"AGENT_KIND": "weird"}):
+            with self.assertRaises(agent.AgentError):
+                agent.make_agent()
+
+
+class GithubActionsSkeletonTests(unittest.TestCase):
+    def test_kick_off_not_implemented(self):
+        adapter = agent.GithubActionsAgent()
+        with self.assertRaises(NotImplementedError):
+            adapter.kick_off(_handoff())
+
+    def test_poll_not_implemented(self):
+        adapter = agent.GithubActionsAgent()
+        with self.assertRaises(NotImplementedError):
+            adapter.poll("any")
+
+    def test_fetch_artifact_not_implemented(self):
+        adapter = agent.GithubActionsAgent()
+        with self.assertRaises(NotImplementedError):
+            adapter.fetch_artifact("any")
+
+    def test_is_mock_false(self):
+        self.assertFalse(agent.GithubActionsAgent().is_mock)
 
 
 if __name__ == "__main__":
@@ -761,14 +830,64 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'agent'`.
 Create `agent.py`:
 
 ```python
+"""Agent adapter for kicking off coding-agent runs.
+
+Threading contract: implementations MUST be safe to call from multiple
+threads. `kick_off` is invoked from the cycle worker thread; `poll` and
+`fetch_artifact` are invoked from the run-queue poller thread; `signal_merge`
+(mock-only) is invoked from the HTTP handler thread serving /logs/merge.
+
+Status flow (driven by poller, not by adapter):
+    queued -> running -> needs_merge -> merged -> applying -> applied | rejected
+                                                |
+                                                +-> failed (errors at any stage)
+
+`applying` and `applied`/`rejected`/`failed` are the poller's local view of the
+run. The adapter only needs to report `queued | running | needs_merge | merged`
+(plus `failed` if it encountered an error).
+"""
+
 from __future__ import annotations
 
 import hashlib
+import os
 import threading
 import time
 import uuid
-from dataclasses import dataclass
-from typing import Any, Protocol
+from dataclasses import dataclass, field
+from typing import Any, Protocol, TypedDict, runtime_checkable
+
+
+class Handoff(TypedDict, total=False):
+    summary: str
+    top_topics: list[str]
+    notes: list[dict[str, Any]]
+
+
+class Artifact(TypedDict):
+    theme_css: str
+    slots: dict[str, str]
+
+
+@dataclass
+class RunStatus:
+    """What an adapter reports about an in-flight run.
+
+    `status` is one of: queued | running | needs_merge | merged | failed.
+    `agent_run_url` and `pr_url` are populated when the adapter knows them.
+    `error` is set when status == "failed".
+    """
+
+    status: str
+    detail: str = ""
+    agent_run_url: str | None = None
+    pr_url: str | None = None
+    error: str | None = None
+
+
+class AgentError(RuntimeError):
+    """Typed error raised by adapter methods on failure."""
+
 
 PALETTE = [
     ("#fff5f7", "#ff7faa", "#34495e"),
@@ -778,42 +897,42 @@ PALETTE = [
     ("#fdf5ff", "#a25fb3", "#3c1f4a"),
 ]
 
-FONTS = [
-    "Comic Sans MS",
-    "Trebuchet MS",
-    "Georgia",
-    "Courier New",
-    "Verdana",
-]
+FONTS = ["Comic Sans MS", "Trebuchet MS", "Georgia", "Courier New", "Verdana"]
 
 
-@dataclass
-class RunStatus:
-    status: str  # queued | running | needs_merge | merged | applied | rejected | failed
-    detail: str = ""
-
-
+@runtime_checkable
 class AgentAdapter(Protocol):
-    def kick_off(self, handoff: dict[str, Any]) -> str: ...
-    def poll(self, run_id: str) -> RunStatus: ...
-    def fetch_artifact(self, run_id: str) -> dict[str, Any]: ...
+    is_mock: bool
+
+    def kick_off(self, handoff: Handoff) -> str:
+        """Trigger a new agent run; return a stable run_id. Raises AgentError."""
+
+    def poll(self, run_id: str) -> RunStatus:
+        """Return current status. Raises AgentError if run_id unknown."""
+
+    def fetch_artifact(self, run_id: str) -> Artifact:
+        """Return the produced artifact. Raises AgentError if not yet ready."""
 
 
 class MockGithubAgent:
+    """In-process simulator. Status transitions are time-based; merge is operator-driven via signal_merge()."""
+
+    is_mock = True
+
     def __init__(self, queued_seconds: float = 5.0, running_seconds: float = 30.0):
         self._queued_seconds = queued_seconds
         self._running_seconds = running_seconds
         self._runs: dict[str, dict[str, Any]] = {}
         self._lock = threading.Lock()
 
-    def kick_off(self, handoff: dict[str, Any]) -> str:
+    def kick_off(self, handoff: Handoff) -> str:
         run_id = uuid.uuid4().hex[:12]
         with self._lock:
             self._runs[run_id] = {
                 "created_at": time.time(),
                 "merged_at": None,
                 "summary": handoff.get("summary", ""),
-                "top_topics": handoff.get("top_topics", []),
+                "top_topics": list(handoff.get("top_topics", [])),
             }
         return run_id
 
@@ -821,29 +940,31 @@ class MockGithubAgent:
         with self._lock:
             run = self._runs.get(run_id)
             if run is None:
-                raise KeyError(run_id)
+                raise AgentError(f"unknown run_id: {run_id}")
             elapsed = time.time() - run["created_at"]
-            if run["merged_at"] is not None:
-                return RunStatus(status="merged", detail="operator merged")
-            if elapsed < self._queued_seconds:
-                return RunStatus(status="queued")
-            if elapsed < self._queued_seconds + self._running_seconds:
-                return RunStatus(status="running")
-            return RunStatus(status="needs_merge")
+            merged_at = run["merged_at"]
+        if merged_at is not None:
+            return RunStatus(status="merged", detail="operator merged",
+                             agent_run_url=None, pr_url=None)
+        if elapsed < self._queued_seconds:
+            return RunStatus(status="queued")
+        if elapsed < self._queued_seconds + self._running_seconds:
+            return RunStatus(status="running")
+        return RunStatus(status="needs_merge", detail="awaiting operator merge")
 
     def signal_merge(self, run_id: str) -> None:
         with self._lock:
             run = self._runs.get(run_id)
             if run is None:
-                raise KeyError(run_id)
+                raise AgentError(f"unknown run_id: {run_id}")
             if run["merged_at"] is None:
                 run["merged_at"] = time.time()
 
-    def fetch_artifact(self, run_id: str) -> dict[str, Any]:
+    def fetch_artifact(self, run_id: str) -> Artifact:
         with self._lock:
             run = self._runs.get(run_id)
             if run is None:
-                raise KeyError(run_id)
+                raise AgentError(f"unknown run_id: {run_id}")
             summary = run["summary"]
             topics = run["top_topics"] or ["something"]
         seed = int(hashlib.sha256(summary.encode("utf-8")).hexdigest(), 16)
@@ -857,24 +978,61 @@ class MockGithubAgent:
             f"button {{ background: {accent}; }}\n"
             f"#generation-attraction {{ border-color: {accent}; }}\n"
         )
-        slots = {
+        slots: dict[str, str] = {
             "intro": f"<p>Today's wall channels: <strong>{topics[0]}</strong>.</p>",
             "aside": f"<blockquote>{summary}</blockquote>",
             "footer-extra": f"<p><em>generation seed: {seed % 100000}</em></p>",
         }
-        return {"theme_css": theme_css, "slots": slots}
+        return Artifact(theme_css=theme_css, slots=slots)
+
+
+class GithubActionsAgent:
+    """v2 skeleton: kicks off a workflow_dispatch on a coding-agent workflow,
+    polls workflow_run status + linked PR state, downloads artifact on merge.
+
+    Intentionally NotImplementedError throughout in v1 so the protocol is
+    exercised structurally without committing to a real network impl yet.
+    Wiring the real calls is its own task.
+    """
+
+    is_mock = False
+
+    def kick_off(self, handoff: Handoff) -> str:
+        # POST /repos/:owner/:repo/actions/workflows/:id/dispatches
+        # then locate the run via /actions/runs?event=workflow_dispatch&created>=<ts>
+        raise NotImplementedError("GithubActionsAgent.kick_off — wire in v2")
+
+    def poll(self, run_id: str) -> RunStatus:
+        # GET /actions/runs/:id -> map status; if completed, look up linked PR
+        # PR.merged == True -> RunStatus("merged", pr_url=..., agent_run_url=...)
+        # PR open and CI green -> RunStatus("needs_merge", ...)
+        raise NotImplementedError("GithubActionsAgent.poll — wire in v2")
+
+    def fetch_artifact(self, run_id: str) -> Artifact:
+        # Download the workflow artifact zip; load theme.css + slots.json
+        raise NotImplementedError("GithubActionsAgent.fetch_artifact — wire in v2")
+
+
+def make_agent() -> AgentAdapter:
+    """Factory selected by AGENT_KIND env var. Default: mock."""
+    kind = os.environ.get("AGENT_KIND", "mock").lower()
+    if kind == "mock":
+        return MockGithubAgent()
+    if kind == "github":
+        return GithubActionsAgent()
+    raise AgentError(f"unknown AGENT_KIND: {kind!r} (expected 'mock' or 'github')")
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `python -m unittest tests.test_agent -v`
-Expected: 5 tests pass.
+Expected: ~14 tests pass (mock + factory + skeleton).
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add agent.py tests/test_agent.py
-git commit -m "feat: add MockGithubAgent with state machine + canned artifacts"
+git commit -m "feat: add agent adapter protocol, MockGithubAgent, factory, GH skeleton"
 ```
 
 ---
@@ -1316,7 +1474,7 @@ import storage
 import abuse
 import logs
 import lint
-from agent import MockGithubAgent
+import agent as agent_mod
 
 PUBLIC_DIR = storage.PUBLIC_DIR
 DATA_DIR = storage.DATA_DIR
@@ -1340,7 +1498,7 @@ WORKER_STATE: dict[str, Any] = {
     "next_run_epoch": None,
 }
 
-AGENT = MockGithubAgent()
+AGENT = agent_mod.make_agent()
 ```
 
 Then remove the duplicate `ROOT`, `PUBLIC_DIR`, `DATA_DIR`, `WORKER_DIR`, `NOTES_PATH` definitions and the duplicate `ensure_storage` (use `storage.ensure_dirs()` instead). Update existing `load_notes`, `save_notes`, `write_handoff` to call `storage.ensure_dirs()` and `storage.read_json` / `storage.write_json` where appropriate, but keep their public signatures unchanged.
@@ -1413,7 +1571,8 @@ def _start_server(tmp_root: Path):
 
     import server  # imported after patching
     server.NOTES_PATH = storage.NOTES_PATH
-    server.AGENT.__init__(queued_seconds=0.05, running_seconds=0.05)
+    import agent as _agent
+    server.AGENT = _agent.MockGithubAgent(queued_seconds=0.05, running_seconds=0.05)
     abuse.reset_quota_for_tests()
 
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.NoteBoardHandler)
@@ -1831,10 +1990,40 @@ class CyclePipelineTests(unittest.TestCase):
             self.addCleanup(p.stop)
 
         import server
+        import agent as _agent
         self.server = server
         server.NOTES_PATH = storage.NOTES_PATH
-        server.AGENT.__init__(queued_seconds=0.01, running_seconds=0.01)
+        server.AGENT = _agent.MockGithubAgent(queued_seconds=0.01, running_seconds=0.01)
         abuse.reset_quota_for_tests()
+
+    def test_close_cycle_records_failure_when_kick_off_raises(self):
+        import agent as _agent
+
+        class FailingAgent:
+            is_mock = True
+            def kick_off(self, handoff):
+                raise _agent.AgentError("simulated kick_off failure")
+            def poll(self, run_id):
+                raise _agent.AgentError("nope")
+            def fetch_artifact(self, run_id):
+                raise _agent.AgentError("nope")
+
+        self.server.AGENT = FailingAgent()
+        storage.write_json(storage.NOTES_PATH, [
+            {"id": "a", "text": "hi", "x": 0, "y": 0, "color": "#fff",
+             "createdAt": "x", "votes": 1, "voter_hashes": [], "submitter_hash": "h", "cycle_id": "c1"},
+        ])
+        storage.write_json(storage.CURRENT_CYCLE_PATH, {"cycle_id": "c1", "started_at": "x", "ends_at": None})
+
+        run_id = self.server.close_cycle()
+        runs = storage.read_json(storage.RUNS_PATH, default=[])
+        self.assertEqual(len(runs), 1)
+        self.assertEqual(runs[0]["status"], "failed")
+        self.assertIn("simulated", runs[0]["error"])
+        # cycle still archived + new cycle opened
+        self.assertIsNotNone(storage.read_json(storage.CYCLES_DIR / "c1.json", default=None))
+        new_cycle = storage.read_json(storage.CURRENT_CYCLE_PATH, default={})
+        self.assertNotEqual(new_cycle["cycle_id"], "c1")
 
     def test_close_cycle_archives_notes_and_kicks_off_run(self):
         # seed notes
@@ -1910,17 +2099,28 @@ def close_cycle() -> str:
     summary_payload = summarize_notes(top_notes)
     write_handoff(summary_payload, top_notes)
 
-    handoff = {
+    handoff: agent_mod.Handoff = {
         "summary": summary_payload["summary"],
         "top_topics": summary_payload["top_topics"],
         "notes": top_notes,
     }
-    run_id = AGENT.kick_off(handoff)
+    ended_at = datetime.now(timezone.utc).isoformat()
+
+    run_id: str
+    initial_status = "queued"
+    initial_error = None
+    try:
+        run_id = AGENT.kick_off(handoff)
+    except agent_mod.AgentError as exc:
+        run_id = f"failed-{uuid.uuid4().hex[:8]}"
+        initial_status = "failed"
+        initial_error = str(exc)
+        logs.log("error", "agent kick_off failed", cycle_id=cycle_id, error=str(exc))
 
     archive = {
         "cycle_id": cycle_id,
         "started_at": cycle.get("started_at"),
-        "ended_at": datetime.now(timezone.utc).isoformat(),
+        "ended_at": ended_at,
         "top_notes": top_notes,
         "summary": summary_payload["summary"],
         "run_id": run_id,
@@ -1931,14 +2131,14 @@ def close_cycle() -> str:
     runs.append({
         "run_id": run_id,
         "cycle_id": cycle_id,
-        "status": "queued",
-        "created_at": archive["ended_at"],
+        "status": initial_status,
+        "created_at": ended_at,
         "started_at": None,
-        "finished_at": None,
+        "finished_at": ended_at if initial_status == "failed" else None,
         "agent_run_url": None,
         "pr_url": None,
         "artifact_path": None,
-        "error": None,
+        "error": initial_error,
     })
     storage.write_json(storage.RUNS_PATH, runs)
 
@@ -2031,32 +2231,112 @@ Add to `server.py`:
 
 ```python
 RUN_POLLER_INTERVAL_SECONDS = 10
+MAX_RUN_DURATION_SECONDS = 60 * 60  # 1 hour: stuck runs marked failed
+TERMINAL_STATUSES = {"applied", "rejected", "failed"}
 
 
-def _update_run(runs: list[dict[str, Any]], run_id: str, **fields) -> None:
-    for run in runs:
-        if run["run_id"] == run_id:
-            run.update(fields)
-            return
+def _parse_iso(value: str | None) -> float | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value).timestamp()
+    except ValueError:
+        return None
+
+
+def _populate_urls(run: dict[str, Any], status: RunStatus) -> bool:
+    """Copy agent_run_url / pr_url from status into run if newly known. Returns True if changed."""
+    changed = False
+    if status.agent_run_url and run.get("agent_run_url") != status.agent_run_url:
+        run["agent_run_url"] = status.agent_run_url
+        changed = True
+    if status.pr_url and run.get("pr_url") != status.pr_url:
+        run["pr_url"] = status.pr_url
+        changed = True
+    return changed
+
+
+def _apply_for_run(run: dict[str, Any]) -> None:
+    """Fetch artifact, lint+apply, write outcome onto run dict in place."""
+    try:
+        artifact = AGENT.fetch_artifact(run["run_id"])
+    except agent_mod.AgentError as exc:
+        run["status"] = "failed"
+        run["error"] = f"fetch_artifact: {exc}"
+        logs.log("error", "fetch_artifact failed", run_id=run["run_id"], error=str(exc))
+        return
+    try:
+        result = lint.apply_artifact(artifact)
+    except Exception as exc:
+        run["status"] = "failed"
+        run["error"] = f"apply errored: {exc}"
+        logs.log("error", "apply errored", run_id=run["run_id"], error=str(exc))
+        return
+    if result.applied:
+        run["status"] = "applied"
+        run["artifact_path"] = str(storage.GENERATED_DIR / "theme.css")
+        logs.log("info", "artifact applied", run_id=run["run_id"])
+    else:
+        run["status"] = "rejected"
+        run["error"] = result.reason
+        lint.restore_last_good()
+        logs.log("warn", "artifact rejected; reverted", run_id=run["run_id"], reason=result.reason)
 
 
 def poll_runs_once() -> None:
+    """Single sweep of all non-terminal runs.
+
+    `applying` is treated as recoverable: if the server crashed mid-apply,
+    the next poll re-fetches and re-applies (idempotent — same artifact, same result).
+    """
     runs = storage.read_json(storage.RUNS_PATH, default=[])
     if not runs:
         return
     changed = False
+    now = time.time()
     for run in runs:
-        if run["status"] in {"applied", "rejected", "failed"}:
+        if run["status"] in TERMINAL_STATUSES:
             continue
-        try:
-            status = AGENT.poll(run["run_id"])
-        except KeyError:
+
+        # stuck-run timeout
+        created = _parse_iso(run.get("created_at"))
+        if created is not None and now - created > MAX_RUN_DURATION_SECONDS:
             run["status"] = "failed"
-            run["error"] = "agent forgot run id"
+            run["error"] = f"stuck for >{MAX_RUN_DURATION_SECONDS}s"
+            run["finished_at"] = datetime.now(timezone.utc).isoformat()
+            logs.log("error", "run timed out", run_id=run["run_id"])
+            changed = True
+            continue
+
+        # poll the adapter
+        from agent import RunStatus  # local import to avoid top-level cycle pain
+        try:
+            status: RunStatus = AGENT.poll(run["run_id"])
+        except agent_mod.AgentError as exc:
+            run["status"] = "failed"
+            run["error"] = str(exc)
+            run["finished_at"] = datetime.now(timezone.utc).isoformat()
+            logs.log("error", "poll failed", run_id=run["run_id"], error=str(exc))
+            changed = True
+            continue
+
+        if _populate_urls(run, status):
+            changed = True
+
+        # `applying` means we crashed mid-apply previously; re-run apply now
+        if run["status"] == "applying":
+            _apply_for_run(run)
             run["finished_at"] = datetime.now(timezone.utc).isoformat()
             changed = True
             continue
+
         if status.status == "queued":
+            continue
+        if status.status == "failed":
+            run["status"] = "failed"
+            run["error"] = status.error or "agent reported failed"
+            run["finished_at"] = datetime.now(timezone.utc).isoformat()
+            changed = True
             continue
         if status.status == "running" and run["status"] != "running":
             run["status"] = "running"
@@ -2069,24 +2349,9 @@ def poll_runs_once() -> None:
             continue
         if status.status == "merged":
             run["status"] = "applying"
-            changed = True
-            try:
-                artifact = AGENT.fetch_artifact(run["run_id"])
-                result = lint.apply_artifact(artifact)
-                if result.applied:
-                    run["status"] = "applied"
-                    run["artifact_path"] = str(storage.GENERATED_DIR / "theme.css")
-                    logs.log("info", "artifact applied", run_id=run["run_id"])
-                else:
-                    run["status"] = "rejected"
-                    run["error"] = result.reason
-                    lint.restore_last_good()
-                    logs.log("warn", "artifact rejected; reverted", run_id=run["run_id"], reason=result.reason)
-            except Exception as exc:
-                run["status"] = "failed"
-                run["error"] = str(exc)
-                logs.log("error", "apply errored", run_id=run["run_id"], error=str(exc))
+            _apply_for_run(run)
             run["finished_at"] = datetime.now(timezone.utc).isoformat()
+            changed = True
             continue
     if changed:
         storage.write_json(storage.RUNS_PATH, runs)
@@ -2329,15 +2594,18 @@ def _query_param(path: str, key: str) -> str:
 def _render_logs_page() -> bytes:
     runs = storage.read_json(storage.RUNS_PATH, default=[])
     log_records = logs.recent()
+    show_mock_merge = getattr(AGENT, "is_mock", False)
     rows = []
     for run in runs:
         merge_button = ""
-        if run["status"] == "needs_merge":
+        if run["status"] == "needs_merge" and show_mock_merge:
             merge_button = (
                 f'<form method="post" action="/logs/merge" '
                 f'onsubmit="return mockMerge(this, \'{run["run_id"]}\')">'
                 f'<button>mock-merge</button></form>'
             )
+        elif run["status"] == "needs_merge" and run.get("pr_url"):
+            merge_button = f'<a href="{_escape(run["pr_url"])}" target="_blank">merge on GitHub</a>'
         rows.append(
             f"<tr>"
             f"<td>{_escape(run['run_id'])}</td>"
@@ -2400,12 +2668,16 @@ And add a new branch in `do_POST`:
             if not _logs_token() or token != _logs_token():
                 self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
                 return
+            if not getattr(AGENT, "is_mock", False):
+                # mock-merge is mock-only; real adapter expects you to merge on GitHub.
+                self._send_json({"error": "mock-merge unavailable for real adapter"}, status=HTTPStatus.BAD_REQUEST)
+                return
             run_id = str(payload.get("run_id", ""))
             try:
-                AGENT.signal_merge(run_id)
+                AGENT.signal_merge(run_id)  # type: ignore[attr-defined]
                 logs.log("info", "operator mock-merged run", run_id=run_id)
                 self._send_json({"ok": True})
-            except KeyError:
+            except agent_mod.AgentError:
                 self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
             return
 ```

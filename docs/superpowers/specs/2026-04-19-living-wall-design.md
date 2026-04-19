@@ -115,18 +115,40 @@ Adapter interface (`agent.py`):
 
 ```python
 class AgentAdapter(Protocol):
-    def kick_off(self, handoff: Handoff) -> str: ...           # returns run_id
-    def poll(self, run_id: str) -> RunStatus: ...              # status + optional artifact
-    def fetch_artifact(self, run_id: str) -> Artifact: ...     # called once status is needs_merge / applied
+    is_mock: bool                                              # capability flag for mock-only UI paths
+    def kick_off(self, handoff: Handoff) -> str: ...           # returns run_id; raises AgentError
+    def poll(self, run_id: str) -> RunStatus: ...              # raises AgentError if unknown
+    def fetch_artifact(self, run_id: str) -> Artifact: ...     # raises AgentError if not ready
+
+@dataclass
+class RunStatus:
+    status: str          # queued | running | needs_merge | merged | failed
+    detail: str = ""
+    agent_run_url: str | None = None  # link to GitHub Actions run page
+    pr_url: str | None = None         # link to the PR the agent opened
+    error: str | None = None          # populated when status == "failed"
+
+class AgentError(RuntimeError): ...
+
+def make_agent() -> AgentAdapter:
+    """Factory selected by AGENT_KIND env var; default 'mock'."""
 ```
 
-`MockGithubAgent` (v1):
+Adapter selection is `agent.make_agent()`, not a hardcoded constructor — this is the swap seam between v1 (mock) and v2 (real GitHub).
+
+`MockGithubAgent` (v1, `is_mock = True`):
 - `kick_off`: synthesises a `run_id`, schedules an internal state machine: `queued (5s) → running (30s) → needs_merge (manual)`.
-- The "manual merge" step in v1 is a button on the secret `/logs` page that signals "operator merged"; the poller then drives the run through `applying → applied / rejected` as in §6.
-- `fetch_artifact`: returns a deterministic-but-varied canned artifact derived from the summary text (e.g., picks an accent color from a hash of the summary, swaps a font, drops a cute slot fragment naming the top topic). Plausible enough that watching the site mutate cycle-to-cycle is satisfying.
+- The "manual merge" step in v1 is a button on the secret `/logs` page that signals "operator merged" via a mock-only `signal_merge(run_id)` method (NOT part of the Protocol). The poller then drives the run through `applying → applied / rejected` as in §6.
+- `fetch_artifact`: returns a deterministic-but-varied canned artifact derived from the summary text (palette/font/seed hashed from summary, plus slot fragments that name the top topic). Plausible enough that watching the site mutate cycle-to-cycle is satisfying.
 - `poll`: returns the current state from the in-memory state machine.
 
-`GithubActionsAgent` (v2, deferred): `kick_off` POSTs to `repos/:owner/:repo/actions/workflows/:id/dispatches`, `poll` queries workflow run status + linked PR status, `fetch_artifact` downloads a workflow artifact (or reads files from the PR branch).
+`GithubActionsAgent` (v1 skeleton, `is_mock = False`): all methods raise `NotImplementedError` in v1. The skeleton exists so the protocol is exercised structurally and `make_agent()` can return it under `AGENT_KIND=github`. Real wiring (workflow_dispatch, PR polling, artifact download) is its own v2 task. The `/logs` page swaps the mock-merge button for a "merge on GitHub" link when the adapter is non-mock.
+
+**Robustness invariants** the poller enforces (independent of which adapter is in use):
+- Stuck runs are timed out (`MAX_RUN_DURATION_SECONDS = 1h`) → marked `failed`.
+- `kick_off` failures during `close_cycle` are caught and recorded as a `status=failed` run, so the cycle never silently drops.
+- `applying` is treated as recoverable: a server crash mid-apply leaves a run in `applying`; the next poll re-fetches and re-applies (artifacts are deterministic for a given run, so this is safe).
+- Adapters MUST be thread-safe: `kick_off` runs in the cycle worker thread, `poll`/`fetch_artifact` in the poller thread, `signal_merge` (mock-only) in HTTP handler threads.
 
 ## 9. Lint + apply
 
