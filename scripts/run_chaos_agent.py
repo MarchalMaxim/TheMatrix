@@ -227,27 +227,28 @@ def main() -> int:
     try:
         raw = call_anthropic(user_message)
     except urllib.error.HTTPError as exc:
-        # Auth / client errors are PERMANENT config bugs — fail the workflow
-        # loudly so they're not silently swallowed every 4h.
-        if exc.code in (401, 403):
-            print(f"[chaos] FATAL auth error from Anthropic: HTTP {exc.code}. "
-                  f"Check the ANTHROPIC_API_KEY secret in the repo settings.",
-                  file=sys.stderr)
-            return 2
-        # Other HTTP errors (5xx, 429) are likely transient — skip this cycle.
-        print(f"[chaos] transient HTTP error ({exc.code}); skipping cycle "
-              f"{handoff_id}", file=sys.stderr)
-        return 0
-    except (RuntimeError, urllib.error.URLError, TimeoutError) as exc:
-        print(f"[chaos] API call failed ({type(exc).__name__}: {exc}); "
-              f"no changes committed for handoff {handoff_id}", file=sys.stderr)
-        return 0
+        detail = ""
+        try:
+            detail = exc.read().decode("utf-8", "ignore")[:500]
+        except Exception:  # noqa: BLE001
+            pass
+        print(f"[chaos] FATAL HTTP {exc.code} from Anthropic: {detail}",
+              file=sys.stderr)
+        return 2
+    except (RuntimeError, urllib.error.URLError, TimeoutError, OSError) as exc:
+        print(f"[chaos] FATAL API error ({type(exc).__name__}: {exc})",
+              file=sys.stderr)
+        return 2
 
     blocks = parse_file_blocks(raw)
     if not blocks:
-        print(f"[chaos] no valid file blocks in response; raw[:300]={raw[:300]!r}",
+        # Claude returned a response but no <<<FILE>>> blocks. Could be a
+        # prompt misunderstanding or it decided not to change anything — in
+        # either case we want this to be visible in the workflow status.
+        print(f"[chaos] FATAL: Anthropic response had no <<<FILE>>> blocks.\n"
+              f"        raw response (first 1000 chars):\n{raw[:1000]}",
               file=sys.stderr)
-        return 0
+        return 3
 
     written = write_file_blocks(blocks)
     print(f"[chaos] handoff {handoff_id}: rewrote {len(written)} file(s):")
