@@ -80,6 +80,16 @@ the SHA-256 leading-zero-bits algorithm it uses; the server verifies PoW identic
 3. The user must still be able to create a new post-it (click "+ new post-it" or \
 equivalent), see all posted notes, drag them, edit their own, delete their own.
 
+4. The site must keep an inconspicuous link to the operator logs page: \
+   <footer id="site-footer"><a href="/logs" id="logs-link">…</a></footer>. \
+   You can restyle it freely (colour, copy, position, icon) but the link to \
+   /logs must remain visible somewhere on every page. Don't move it inside \
+   the canvas where it might get covered by post-its.
+
+5. There is NO "trigger cycle" / "rupture now" / equivalent button on the \
+   public page. Cycle triggering is operator-only via /logs. Do not add such \
+   a button back, even thematically — it must not exist in index.html.
+
 Everything else is yours: layout, colours, typography, animations, copy, extra \
 decorative DOM, weird cursors, visual glitches, overlays, sound-less audio tags, \
 custom fonts, wild backgrounds — go for it. Make the site feel like it came from \

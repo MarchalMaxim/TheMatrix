@@ -1,6 +1,5 @@
 const canvas = document.getElementById("canvas");
 const newNoteBtn = document.getElementById("new-note-btn");
-const triggerCycleBtn = document.getElementById("trigger-cycle-btn");
 const noteTemplate = document.getElementById("note-template");
 const bigClock = document.getElementById("big-clock");
 const generationCountdown = document.getElementById("generation-countdown");
@@ -281,23 +280,8 @@ canvas.addEventListener("drop", async (event) => {
 
 newNoteBtn.addEventListener("click", createNewNote);
 
-if (triggerCycleBtn) {
-  triggerCycleBtn.addEventListener("click", async () => {
-    triggerCycleBtn.disabled = true;
-    triggerCycleBtn.textContent = "⏳ Triggering…";
-    try {
-      await fetch("/api/trigger-cycle", { method: "POST" });
-      showToast("⚡ Cycle triggered — board will reset shortly");
-      // Refresh status after a short delay so the new cycle_id arrives
-      setTimeout(refreshWorkerStatus, 1500);
-    } catch (_err) {
-      showToast("Could not trigger cycle.");
-    } finally {
-      triggerCycleBtn.disabled = false;
-      triggerCycleBtn.textContent = "⚡ Trigger cycle";
-    }
-  });
-}
+// The manual cycle trigger is operator-only now; it lives on /logs?token=…
+// No public UI element for it.
 
 // Seed cycle_id before first status poll so a cycle already in progress
 // doesn't trigger a spurious board flush.

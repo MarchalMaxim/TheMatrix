@@ -581,7 +581,11 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
             "</style></head><body>"
             "<h1>Operator Logs</h1>"
             "<p>"
-            "<button onclick=\"fetch('/api/trigger-cycle',{method:'POST'}).then(()=>location.reload())\">"
+            "<button onclick=\""
+            f"fetch('/api/trigger-cycle',{{method:'POST',headers:{{'Content-Type':'application/json'}},"
+            f"body:JSON.stringify({{token:'{token_esc}'}})}})"
+            ".then(r=>r.ok?location.reload():alert('trigger failed: '+r.status))"
+            "\">"
             "⚡ Trigger cycle now"
             "</button>"
             "</p>"
@@ -670,7 +674,27 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
         self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
 
     def _handle_trigger_cycle(self) -> None:
-        """Debug endpoint: wake the worker early to close the current cycle now."""
+        """Operator endpoint: wake the worker early to close the current cycle.
+
+        Gated by LOGS_TOKEN — either via JSON body {"token": "..."} or the
+        X-Logs-Token header. Returns 404 (not 401/403) on failure so the
+        endpoint is indistinguishable from "not found" to scanners.
+        """
+        expected = self._logs_token()
+        # Accept token from body OR header for flexibility
+        header_token = self.headers.get("X-Logs-Token", "")
+        body_token = ""
+        try:
+            payload = self._read_json()
+            body_token = str(payload.get("token", ""))
+        except Exception:  # noqa: BLE001
+            pass
+        provided = body_token or header_token
+        if not expected or provided != expected:
+            logs.log("warn", "cycle trigger rejected",
+                     ip=self._client_ip(), reason="bad or missing token")
+            self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
+            return
         _TRIGGER_EVENT.set()
         logs.log("info", "cycle trigger requested", ip=self._client_ip())
         self._send_json({"triggered": True})
