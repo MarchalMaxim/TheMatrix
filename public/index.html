@@ -12,7 +12,7 @@
       <p>Drop your tiny ideas on the wall.</p>
       <section id="generation-attraction" aria-live="polite">
         <p class="attraction-label">⏳ Countdown to the next website generation</p>
-        <p id="generation-countdown" class="countdown">15:00</p>
+        <p id="generation-countdown" class="countdown">4:00:00</p>
         <p id="big-clock" class="big-clock">--:--:--</p>
         <p id="last-summary" class="last-summary">Waiting for the first generation briefing...</p>
       </section>
@@ -20,6 +20,10 @@
       <button id="trigger-cycle-btn" type="button" title="Dev: close this cycle immediately and kick off the agent">⚡ Trigger cycle</button>
     </header>
     <main id="canvas" aria-label="Post-it canvas"></main>
+    <section id="history" aria-label="Site evolution history">
+      <h2 class="history-title">📜 How this site has evolved</h2>
+      <ol id="history-list"><li class="history-empty">Loading history…</li></ol>
+    </section>
     <template id="note-template">
       <article class="note" draggable="true">
         <div class="note-grip" aria-hidden="true">⋮⋮ drag</div>

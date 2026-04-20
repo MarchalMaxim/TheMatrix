@@ -320,6 +320,15 @@ class GithubActionsAgent:
                          detail=f"unknown gh status {gh_status!r}")
 
     def fetch_artifact(self, run_id: str) -> Artifact:
+        """In the chaos-deploy flow the workflow commits directly to main;
+        applying those changes is the deploy workflow's job, not ours. So
+        there is nothing for the server to fetch. We return an empty
+        Artifact as a signal that "the workflow is the artifact."
+
+        The poller's `_apply_for_run` still records this as 'applied' but
+        skips writing anything to disk because both theme_css and slots
+        are empty.
+        """
         run = self._find_run(run_id)
         if run is None:
             raise AgentError(f"no GitHub run found for handoff {run_id}")
@@ -328,21 +337,7 @@ class GithubActionsAgent:
                 f"workflow not yet successful (status={run.get('status')}, "
                 f"conclusion={run.get('conclusion')})"
             )
-        gh_run_id = run["id"]
-        artifacts = self._api_json(
-            "GET",
-            f"/repos/{self.owner}/{self.repo}/actions/runs/{gh_run_id}/artifacts",
-        )
-        items = artifacts.get("artifacts", [])
-        if not items:
-            raise AgentError(f"no artifacts on run {gh_run_id}")
-        # Pick the artifact whose name matches our naming scheme; fall back to first
-        chosen = next(
-            (a for a in items if run_id in (a.get("name") or "")),
-            items[0],
-        )
-        zip_bytes = self._download_artifact_zip(chosen["id"])
-        return self._parse_artifact_zip(zip_bytes)
+        return Artifact(theme_css="", slots={})
 
     def _download_artifact_zip(self, artifact_id: int) -> bytes:
         """Download an artifact zip.

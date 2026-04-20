@@ -157,6 +157,25 @@ class GithubAgentFetchArtifactTests(unittest.TestCase):
             }],
         }).encode()
 
+    # In the chaos-deploy flow fetch_artifact no longer downloads anything
+    # from GitHub — the deploy workflow applies changes via git push. So
+    # fetch_artifact just validates the run finished successfully and
+    # returns an empty Artifact (a sentinel the lint/apply layer treats as
+    # a no-op).
+
+    def test_fetch_returns_empty_artifact_on_success(self):
+        a, _ = _make_agent([("/runs", 200, self._runs("abc"))])
+        art = a.fetch_artifact("abc")
+        self.assertEqual(art["theme_css"], "")
+        self.assertEqual(art["slots"], {})
+
+    def test_fetch_raises_when_run_missing(self):
+        a, _ = _make_agent([
+            ("/runs", 200, json.dumps({"workflow_runs": []}).encode()),
+        ])
+        with self.assertRaises(agent.AgentError):
+            a.fetch_artifact("abc")
+
     def test_fetch_raises_when_run_not_complete(self):
         runs = json.dumps({"workflow_runs": [{
             "id": 5, "name": "matrix-handoff-abc",
@@ -167,82 +186,15 @@ class GithubAgentFetchArtifactTests(unittest.TestCase):
         with self.assertRaises(agent.AgentError):
             a.fetch_artifact("abc")
 
-    def test_fetch_raises_when_no_artifacts(self):
-        a, _ = _make_agent([
-            ("/runs", 200, self._runs("abc")),
-            ("/runs/999/artifacts", 200, json.dumps({"artifacts": []}).encode()),
-        ])
+    def test_fetch_raises_when_run_failed(self):
+        runs = json.dumps({"workflow_runs": [{
+            "id": 5, "name": "matrix-handoff-abc",
+            "status": "completed", "conclusion": "failure",
+            "html_url": "x",
+        }]}).encode()
+        a, _ = _make_agent([("/runs", 200, runs)])
         with self.assertRaises(agent.AgentError):
             a.fetch_artifact("abc")
-
-    def test_fetch_follows_302_to_azure_without_auth_header(self):
-        """The /artifacts/{id}/zip endpoint redirects to Azure Blob; we must
-        re-request the Location with no GitHub Authorization header."""
-        zip_bytes = _zip_artifact("body{color:green}", {"intro": "<p>x</p>",
-                                                         "aside": "<p>y</p>",
-                                                         "footer-extra": "<p>z</p>"})
-        azure_url = "https://pipelines.actions.githubusercontent.com/blob/abc?sig=xyz"
-
-        # We need to inject the no-redirect opener path too. The first call
-        # (GitHub side) goes through urllib.request.build_opener — we patch
-        # that to return a fake opener that raises HTTPError(302). The second
-        # call (Azure side) goes through self._http_open.
-        a, fake = _make_agent([
-            ("/runs", 200, json.dumps({"workflow_runs": [{
-                "id": 999, "name": "matrix-handoff-abc",
-                "status": "completed", "conclusion": "success",
-                "html_url": "https://x",
-            }]}).encode()),
-            ("/runs/999/artifacts", 200, json.dumps({
-                "artifacts": [{"id": 7, "name": "matrix-abc"}]
-            }).encode()),
-            (azure_url, 200, zip_bytes),  # Azure call goes through _http_open
-        ])
-
-        # Fake the GitHub-side opener to raise HTTPError(302)
-        class _FakeRedirectOpener:
-            def open(self, req, timeout=None):  # noqa: ARG002
-                import io as _io
-                raise urllib.error.HTTPError(
-                    req.full_url, 302, "Found",
-                    {"Location": azure_url}, _io.BytesIO(b"")
-                )
-
-        with mock.patch.object(
-            agent.urllib.request, "build_opener",
-            return_value=_FakeRedirectOpener(),
-        ):
-            art = a.fetch_artifact("abc")
-
-        self.assertEqual(art["theme_css"], "body{color:green}")
-        # Verify the Azure call went out WITHOUT a GitHub Authorization header
-        azure_calls = [c for c in fake.calls if azure_url in c[1]]
-        self.assertEqual(len(azure_calls), 1)
-
-    def test_fetch_raises_on_bad_zip(self):
-        azure_url = "https://blob.example/x"
-        a, _ = _make_agent([
-            ("/runs", 200, self._runs("abc")),
-            ("/runs/999/artifacts", 200, json.dumps({
-                "artifacts": [{"id": 7, "name": "x"}]
-            }).encode()),
-            (azure_url, 200, b"not a zip"),
-        ])
-
-        class _FakeRedirectOpener:
-            def open(self, req, timeout=None):  # noqa: ARG002
-                import io as _io
-                raise urllib.error.HTTPError(
-                    req.full_url, 302, "Found",
-                    {"Location": azure_url}, _io.BytesIO(b"")
-                )
-
-        with mock.patch.object(
-            agent.urllib.request, "build_opener",
-            return_value=_FakeRedirectOpener(),
-        ):
-            with self.assertRaises(agent.AgentError):
-                a.fetch_artifact("abc")
 
 
 class MakeAgentTests(unittest.TestCase):

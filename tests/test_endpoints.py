@@ -105,7 +105,8 @@ class VoteEndpointTests(unittest.TestCase):
 
     def test_vote_increments_count(self):
         self._make_note()
-        salt = storage.get_daily_salt(today="2026-04-19")
+        from datetime import datetime, timezone
+        salt = storage.get_daily_salt(today=datetime.now(timezone.utc).date().isoformat())
         voter = abuse.submitter_hash("127.0.0.1", "test", salt=salt)
         challenge = abuse.make_pow_challenge("cycle-test", voter)
         nonce = self._solve_pow(challenge, abuse.POW_DIFFICULTY_VOTE)
@@ -116,7 +117,8 @@ class VoteEndpointTests(unittest.TestCase):
 
     def test_double_vote_unvotes(self):
         self._make_note()
-        salt = storage.get_daily_salt(today="2026-04-19")
+        from datetime import datetime, timezone
+        salt = storage.get_daily_salt(today=datetime.now(timezone.utc).date().isoformat())
         voter = abuse.submitter_hash("127.0.0.1", "test", salt=salt)
         challenge = abuse.make_pow_challenge("cycle-test", voter)
         nonce = self._solve_pow(challenge, abuse.POW_DIFFICULTY_VOTE)
@@ -162,7 +164,8 @@ class CreateNoteHardeningTests(unittest.TestCase):
             nonce += 1
 
     def _challenge(self):
-        salt = storage.get_daily_salt(today="2026-04-19")
+        from datetime import datetime, timezone
+        salt = storage.get_daily_salt(today=datetime.now(timezone.utc).date().isoformat())
         voter = abuse.submitter_hash("127.0.0.1", "test", salt=salt)
         return abuse.make_pow_challenge(self._cycle_id(), voter), voter
 

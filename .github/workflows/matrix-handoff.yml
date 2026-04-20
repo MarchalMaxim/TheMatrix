@@ -1,8 +1,7 @@
 name: matrix-handoff
 
-# CRITICAL: this run-name embeds the handoff_id so GithubActionsAgent.poll()
-# can find this run by listing recent workflow runs and matching the name.
-# Do NOT change this format without updating the agent's _find_run() too.
+# Embeds the handoff_id so GithubActionsAgent.poll() can find this run by
+# listing recent workflow runs and matching the name.
 run-name: matrix-handoff-${{ inputs.handoff_id }}
 
 on:
@@ -18,40 +17,59 @@ on:
         type: string
         default: "no summary"
       notes_json:
-        description: "JSON-encoded list of top notes (text, votes)"
+        description: "JSON-encoded list of top notes"
         required: false
         type: string
         default: "[]"
 
-# Restrict permissions: we only need to checkout the repo and write logs.
 permissions:
-  contents: read
+  contents: write       # needed to commit + push to main
 
 jobs:
-  generate:
+  chaos:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout
+      - name: Checkout main
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Generate theme.css and slots.json
+      - name: Run the chaos agent
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           HANDOFF_ID: ${{ inputs.handoff_id }}
           SUMMARY: ${{ inputs.summary }}
           NOTES_JSON: ${{ inputs.notes_json }}
-        run: python scripts/generate_artifact.py
+        run: python scripts/run_chaos_agent.py
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: matrix-${{ inputs.handoff_id }}
-          path: artifact/
-          if-no-files-found: error
-          retention-days: 7
+      - name: Commit and push any changes under public/
+        env:
+          HANDOFF_ID: ${{ inputs.handoff_id }}
+          SUMMARY: ${{ inputs.summary }}
+        run: |
+          git config user.name  "matrix-chaos-agent"
+          git config user.email "matrix-chaos-agent@users.noreply.github.com"
+          # Only stage files under public/ — anything the agent wrote outside
+          # that directory is simply never staged, and the CI runner's working
+          # tree is thrown away at end of job, so it can't leak anywhere.
+          git add public/
+          if git diff --cached --quiet; then
+            echo "No public/ changes — nothing to commit."
+            exit 0
+          fi
+          # Truncate the summary so it fits in the commit title (<72 chars).
+          SUM_SHORT=$(echo "$SUMMARY" | tr '\n' ' ' | cut -c1-60)
+          git commit -m "cycle-${HANDOFF_ID}: ${SUM_SHORT}" \
+                     -m "Handoff ID: ${HANDOFF_ID}" \
+                     -m "Summary: ${SUMMARY}"
+          # Fast-forward push; if someone else pushed in the meantime we fail
+          # loudly rather than rebasing on top of unknown commits.
+          git push origin main

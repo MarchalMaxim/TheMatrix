@@ -1,0 +1,87 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Only one concurrent deploy at a time; newer push cancels an in-flight one.
+concurrency:
+  group: deploy-cloud-run
+  cancel-in-progress: true
+
+env:
+  # These four come from GitHub repo secrets/variables — see DEPLOYMENT.md.
+  SERVICE: matrix-server
+  REGION: ${{ vars.GCP_REGION }}
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  REPO: matrix                 # Artifact Registry docker repo name
+  BUCKET: ${{ vars.GCS_BUCKET_NAME }}
+
+jobs:
+  deploy:
+    # Skip deploy on commits the chaos agent made that touch ONLY public/.
+    # We still want deploys for everything else (code changes).
+    # (Left permissive for now — every push to main deploys.)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build and push image
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${SERVICE}:${GITHUB_SHA::12}"
+          echo "IMAGE=${IMAGE}" >> "$GITHUB_ENV"
+          docker build -t "${IMAGE}" .
+          docker push "${IMAGE}"
+
+      - name: Deploy to Cloud Run
+        run: |
+          # GCS Fuse mount makes gs://${BUCKET} appear at /app/data inside the
+          # container — so server.py's storage.DATA_DIR naturally persists.
+          # min-instances=1 keeps the background cycle worker thread alive
+          # between requests.
+          gcloud run deploy "${SERVICE}" \
+            --image="${IMAGE}" \
+            --region="${REGION}" \
+            --platform=managed \
+            --allow-unauthenticated \
+            --min-instances=1 \
+            --max-instances=3 \
+            --memory=512Mi \
+            --cpu=1 \
+            --timeout=60s \
+            --execution-environment=gen2 \
+            --add-volume=name=matrix-data,type=cloud-storage,bucket="${BUCKET}" \
+            --add-volume-mount=volume=matrix-data,mount-path=/app/data \
+            --set-env-vars="AGENT_KIND=github" \
+            --set-env-vars="GITHUB_OWNER=${{ github.repository_owner }}" \
+            --set-env-vars="GITHUB_REPO=${{ github.event.repository.name }}" \
+            --set-env-vars="GITHUB_REF=main" \
+            --set-secrets="GITHUB_TOKEN=MATRIX_GITHUB_TOKEN:latest" \
+            --set-secrets="ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest" \
+            --set-secrets="LOGS_TOKEN=LOGS_TOKEN:latest"
+
+      - name: Show service URL
+        run: |
+          URL=$(gcloud run services describe "${SERVICE}" \
+                 --region="${REGION}" --format='value(status.url)')
+          echo "Deployed to ${URL}"
+          echo "URL=${URL}" >> "$GITHUB_STEP_SUMMARY"

@@ -5,6 +5,7 @@ const noteTemplate = document.getElementById("note-template");
 const bigClock = document.getElementById("big-clock");
 const generationCountdown = document.getElementById("generation-countdown");
 const lastSummary = document.getElementById("last-summary");
+const historyList = document.getElementById("history-list");
 
 const NOTE_PALETTE = [
   "#ffe98f", "#ffd1dc", "#c8f7c5", "#c5e3ff", "#ffd9b3",
@@ -96,6 +97,43 @@ function createNoteElement(note) {
   return noteEl;
 }
 
+async function loadHistory() {
+  if (!historyList) return;
+  try {
+    const commits = await requestJson("/api/history");
+    historyList.innerHTML = "";
+    if (!commits.length) {
+      const li = document.createElement("li");
+      li.className = "history-empty";
+      li.textContent = "No cycle commits yet. The site hasn't been rewritten by the agent yet.";
+      historyList.appendChild(li);
+      return;
+    }
+    for (const c of commits) {
+      const li = document.createElement("li");
+      const when = c.date ? new Date(c.date).toLocaleString() : "";
+      const anchor = document.createElement("a");
+      anchor.href = c.html_url || "#";
+      anchor.target = "_blank";
+      anchor.rel = "noopener";
+      anchor.innerHTML =
+        `<span class="history-sha">${c.sha}</span>` +
+        `<span class="history-title-text">${escapeHtml(c.title)}</span>` +
+        (when ? `<span class="history-date">${when}</span>` : "");
+      li.appendChild(anchor);
+      historyList.appendChild(li);
+    }
+  } catch (_err) {
+    historyList.innerHTML = `<li class="history-empty">Could not load history right now.</li>`;
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  })[c]);
+}
+
 async function loadNotes() {
   try {
     const notes = await requestJson("/api/notes");
@@ -110,9 +148,13 @@ function formatClock(date) {
 }
 
 function formatCountdown(totalSeconds) {
-  const minutes = Math.floor(totalSeconds / 60);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  const pad = (n) => String(n).padStart(2, "0");
+  return hours > 0
+    ? `${hours}:${pad(minutes)}:${pad(seconds)}`
+    : `${pad(minutes)}:${pad(seconds)}`;
 }
 
 function updateBigClock() {
@@ -121,7 +163,7 @@ function updateBigClock() {
 
 function updateGenerationCountdown() {
   if (typeof nextRunEpochMs !== "number") {
-    generationCountdown.textContent = "15:00";
+    generationCountdown.textContent = "4:00:00";
     return;
   }
 
@@ -136,12 +178,13 @@ async function refreshWorkerStatus() {
     lastSummary.textContent = status.summary || "Waiting for the first generation briefing...";
     updateGenerationCountdown();
 
-    // Detect cycle rollover: server cleared the board — reload notes.
+    // Detect cycle rollover: server cleared the board — reload notes + history.
     if (status.cycle_id && status.cycle_id !== currentCycleId) {
       if (currentCycleId !== null) {
         // A new cycle started while the user was on the page — flush stale notes.
         canvas.innerHTML = "";
         await loadNotes();
+        loadHistory();
         showToast("✨ New cycle — the board has been reset!");
       }
       currentCycleId = status.cycle_id;
@@ -260,6 +303,7 @@ if (triggerCycleBtn) {
 // doesn't trigger a spurious board flush.
 requestJson("/api/cycle/current").then((c) => { currentCycleId = c.cycle_id || null; }).catch(() => {});
 loadNotes();
+loadHistory();
 updateBigClock();
 updateGenerationCountdown();
 refreshWorkerStatus();

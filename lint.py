@@ -149,6 +149,11 @@ def apply_artifact(artifact: dict) -> ApplyResult:
     theme_css = artifact.get("theme_css", "")
     slots = artifact.get("slots", {})
 
+    # Empty artifact (chaos-deploy flow: the deploy workflow applied the
+    # changes directly via git, there's nothing for us to lint or write).
+    if not theme_css and not slots:
+        return ApplyResult(True, "")
+
     css_ok, css_clean, css_reason = sanitise_css(theme_css)
     if not css_ok:
         return ApplyResult(False, css_reason)

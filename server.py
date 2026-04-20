@@ -24,7 +24,7 @@ PUBLIC_DIR = storage.PUBLIC_DIR
 DATA_DIR = storage.DATA_DIR
 WORKER_DIR = storage.WORKER_DIR
 NOTES_PATH = storage.NOTES_PATH
-WORKER_INTERVAL_SECONDS = 15 * 60
+WORKER_INTERVAL_SECONDS = 4 * 60 * 60  # 4h between cycles
 
 STOPWORDS = {
     "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
@@ -402,6 +402,72 @@ def poll_runs_once() -> None:
         storage.write_json(storage.RUNS_PATH, runs)
 
 
+# ------------------------------------------------------------------
+# Commit history (/api/history) — fetched from GitHub, cached briefly
+# ------------------------------------------------------------------
+_HISTORY_CACHE: dict[str, Any] = {"ts": 0.0, "data": []}
+_HISTORY_CACHE_TTL_SECONDS = 60
+_HISTORY_LOCK = threading.Lock()
+_HISTORY_MAX = 30
+
+
+def _fetch_commit_history() -> list[dict[str, Any]]:
+    """Return recent cycle commits, cached for _HISTORY_CACHE_TTL_SECONDS.
+
+    Non-fatal on any error — returns cached data (possibly stale, possibly
+    empty) rather than breaking the frontend. Only shows commits whose
+    message starts with 'cycle-'.
+    """
+    with _HISTORY_LOCK:
+        if time.time() - _HISTORY_CACHE["ts"] < _HISTORY_CACHE_TTL_SECONDS:
+            return _HISTORY_CACHE["data"]
+
+    owner = os.environ.get("GITHUB_OWNER")
+    repo = os.environ.get("GITHUB_REPO")
+    token = os.environ.get("GITHUB_TOKEN")
+    if not (owner and repo):
+        return []
+
+    url = f"https://api.github.com/repos/{owner}/{repo}/commits?per_page={_HISTORY_MAX}"
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "TheMatrix-server/1.0",
+    }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    import urllib.request as _req
+    import urllib.error as _err
+    try:
+        request = _req.Request(url, headers=headers, method="GET")
+        with _req.urlopen(request, timeout=10) as resp:
+            raw = resp.read()
+        commits = json.loads(raw.decode("utf-8"))
+    except (_err.URLError, _err.HTTPError, json.JSONDecodeError, OSError) as exc:
+        logs.log("warn", "history fetch failed", error=str(exc))
+        with _HISTORY_LOCK:
+            return _HISTORY_CACHE["data"]  # stale or empty
+
+    trimmed: list[dict[str, Any]] = []
+    for c in commits:
+        message = ((c.get("commit") or {}).get("message") or "")
+        title = message.split("\n", 1)[0]
+        if not title.startswith("cycle-"):
+            continue
+        author = ((c.get("commit") or {}).get("author") or {})
+        trimmed.append({
+            "sha": c.get("sha", "")[:12],
+            "title": title,
+            "date": author.get("date"),
+            "html_url": c.get("html_url"),
+        })
+
+    with _HISTORY_LOCK:
+        _HISTORY_CACHE["ts"] = time.time()
+        _HISTORY_CACHE["data"] = trimmed
+    return trimmed
+
+
 def run_poller() -> None:
     while True:
         try:
@@ -544,6 +610,9 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
                 "difficulty_submit": abuse.POW_DIFFICULTY_SUBMIT,
                 "difficulty_vote": abuse.POW_DIFFICULTY_VOTE,
             })
+            return
+        if self.path == "/api/history" or self.path.startswith("/api/history?"):
+            self._send_json(_fetch_commit_history())
             return
         if self.path == "/api/runs":
             runs = storage.read_json(storage.RUNS_PATH, default=[])
@@ -757,8 +826,11 @@ def main() -> None:
         NOTES_PATH.write_text("[]", encoding="utf-8")
     threading.Thread(target=run_worker, daemon=True).start()
     threading.Thread(target=run_poller, daemon=True).start()
-    server = ThreadingHTTPServer(("127.0.0.1", 8000), NoteBoardHandler)
-    print("TheMatrix running at http://127.0.0.1:8000")
+    # Cloud Run injects PORT; bind 0.0.0.0 so the container is reachable.
+    host = os.environ.get("HOST", "0.0.0.0")
+    port = int(os.environ.get("PORT", "8000"))
+    server = ThreadingHTTPServer((host, port), NoteBoardHandler)
+    print(f"TheMatrix running at http://{host}:{port}")
     server.serve_forever()
 
 
