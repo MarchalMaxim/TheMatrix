@@ -3,35 +3,68 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TheMatrix</title>
+    <title>⚡ THE VOID SCREAMS BACK ⚡</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
+    <div class="glitch-overlay"></div>
+    <div class="scanlines"></div>
+    
     <header>
-      <h1>TheMatrix ✨</h1>
-      <p>Drop your tiny ideas on the wall.</p>
+      <h1 class="glitch-text" data-text="⚡ THE VOID SCREAMS BACK ⚡">⚡ THE VOID SCREAMS BACK ⚡</h1>
+      <p class="subtitle">CAST YOUR THOUGHTS INTO THE ABYSS. WATCH THEM MUTATE.</p>
+      
       <section id="generation-attraction" aria-live="polite">
-        <p class="attraction-label">⏳ Countdown to the next website generation</p>
+        <p class="attraction-label">⌛ REALITY SHIFT IN</p>
         <p id="generation-countdown" class="countdown">4:00:00</p>
-        <p id="big-clock" class="big-clock">--:--:--</p>
-        <p id="last-summary" class="last-summary">Waiting for the first generation briefing...</p>
+        <div class="clock-container">
+          <p id="big-clock" class="big-clock">--:--:--</p>
+          <div class="clock-pulse"></div>
+        </div>
+        <p id="last-summary" class="last-summary">THE MACHINE DREAMS OF ELECTRIC SHEEP...</p>
       </section>
-      <button id="new-note-btn" type="button">+ New post-it</button>
-      <button id="trigger-cycle-btn" type="button" title="Dev: close this cycle immediately and kick off the agent">⚡ Trigger cycle</button>
+      
+      <div class="button-row">
+        <button id="new-note-btn" type="button" class="btn-primary">
+          <span class="btn-icon">✚</span>
+          <span class="btn-text">INJECT THOUGHT</span>
+        </button>
+        <button id="trigger-cycle-btn" type="button" class="btn-danger" title="Dev: close this cycle immediately and kick off the agent">
+          <span class="btn-icon">⚡</span>
+          <span class="btn-text">FORCE MUTATION</span>
+        </button>
+      </div>
     </header>
-    <main id="canvas" aria-label="Post-it canvas"></main>
+    
+    <main id="canvas" aria-label="Post-it canvas">
+      <div class="grid-lines"></div>
+    </main>
+    
     <section id="history" aria-label="Site evolution history">
-      <h2 class="history-title">📜 How this site has evolved</h2>
-      <ol id="history-list"><li class="history-empty">Loading history…</li></ol>
+      <h2 class="history-title">
+        <span class="history-icon">⟨⟨⟨</span>
+        PREVIOUS INCARNATIONS
+        <span class="history-icon">⟩⟩⟩</span>
+      </h2>
+      <ol id="history-list">
+        <li class="history-empty">LOADING ARCHAEOLOGICAL RECORDS...</li>
+      </ol>
     </section>
+    
     <template id="note-template">
       <article class="note" draggable="true">
-        <div class="note-grip" aria-hidden="true">⋮⋮ drag</div>
-        <button class="note-delete" title="Delete this post-it" aria-label="Delete">×</button>
-        <textarea maxlength="500" aria-label="Post-it content" placeholder="A tiny whimsical idea..."></textarea>
+        <div class="note-corner tl"></div>
+        <div class="note-corner tr"></div>
+        <div class="note-corner bl"></div>
+        <div class="note-corner br"></div>
+        <div class="note-grip" aria-hidden="true">⋮⋮⋮</div>
+        <button class="note-delete" title="Delete this post-it" aria-label="Delete">⊗</button>
+        <textarea maxlength="500" aria-label="Post-it content" placeholder="SPEAK YOUR TRUTH..."></textarea>
         <div class="note-author" aria-label="Author"></div>
+        <div class="note-static"></div>
       </article>
     </template>
+    
     <script src="/app.js"></script>
   </body>
 </html>
