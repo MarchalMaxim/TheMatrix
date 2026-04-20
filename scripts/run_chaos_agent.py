@@ -226,11 +226,19 @@ def main() -> int:
     user_message = build_user_message(summary, notes, files)
     try:
         raw = call_anthropic(user_message)
-    except (RuntimeError, urllib.error.URLError, urllib.error.HTTPError,
-            TimeoutError) as exc:
-        # In the old generator we had a deterministic fallback, but for the
-        # chaos flow "no changes" is the right fallback — better than
-        # corrupting the site with a stub.
+    except urllib.error.HTTPError as exc:
+        # Auth / client errors are PERMANENT config bugs — fail the workflow
+        # loudly so they're not silently swallowed every 4h.
+        if exc.code in (401, 403):
+            print(f"[chaos] FATAL auth error from Anthropic: HTTP {exc.code}. "
+                  f"Check the ANTHROPIC_API_KEY secret in the repo settings.",
+                  file=sys.stderr)
+            return 2
+        # Other HTTP errors (5xx, 429) are likely transient — skip this cycle.
+        print(f"[chaos] transient HTTP error ({exc.code}); skipping cycle "
+              f"{handoff_id}", file=sys.stderr)
+        return 0
+    except (RuntimeError, urllib.error.URLError, TimeoutError) as exc:
         print(f"[chaos] API call failed ({type(exc).__name__}: {exc}); "
               f"no changes committed for handoff {handoff_id}", file=sys.stderr)
         return 0
