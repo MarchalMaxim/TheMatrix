@@ -3,65 +3,63 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>⚡ THE VOID SCREAMS BACK ⚡</title>
+    <title>🌑 THE DARK PASTURE 🐑</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="glitch-overlay"></div>
-    <div class="scanlines"></div>
+    <div class="void-bg"></div>
+    <div class="sheep-field" id="sheep-field" aria-hidden="true"></div>
+    <div class="cosmic-dust"></div>
     
     <header>
-      <h1 class="glitch-text" data-text="⚡ THE VOID SCREAMS BACK ⚡">⚡ THE VOID SCREAMS BACK ⚡</h1>
-      <p class="subtitle">CAST YOUR THOUGHTS INTO THE ABYSS. WATCH THEM MUTATE.</p>
+      <h1 class="shadow-pulse" data-text="🌑 THE DARK PASTURE 🐑">🌑 THE DARK PASTURE 🐑</h1>
+      <p class="subtitle">where circular thoughts graze in eternal night</p>
       
       <section id="generation-attraction" aria-live="polite">
-        <p class="attraction-label">⌛ REALITY SHIFT IN</p>
+        <p class="attraction-label">⏳ NEXT METAMORPHOSIS</p>
         <p id="generation-countdown" class="countdown">4:00:00</p>
         <div class="clock-container">
           <p id="big-clock" class="big-clock">--:--:--</p>
-          <div class="clock-pulse"></div>
+          <div class="clock-glow"></div>
         </div>
-        <p id="last-summary" class="last-summary">THE MACHINE DREAMS OF ELECTRIC SHEEP...</p>
+        <p id="last-summary" class="last-summary">the sheep dream of electric squares...</p>
       </section>
       
       <div class="button-row">
         <button id="new-note-btn" type="button" class="btn-primary">
-          <span class="btn-icon">✚</span>
-          <span class="btn-text">INJECT THOUGHT</span>
+          <span class="btn-icon">◉</span>
+          <span class="btn-text">birth a thought</span>
         </button>
         <button id="trigger-cycle-btn" type="button" class="btn-danger" title="Dev: close this cycle immediately and kick off the agent">
           <span class="btn-icon">⚡</span>
-          <span class="btn-text">FORCE MUTATION</span>
+          <span class="btn-text">rupture now</span>
         </button>
       </div>
     </header>
     
     <main id="canvas" aria-label="Post-it canvas">
-      <div class="grid-lines"></div>
+      <div class="pasture-fog"></div>
     </main>
     
     <section id="history" aria-label="Site evolution history">
       <h2 class="history-title">
-        <span class="history-icon">⟨⟨⟨</span>
+        <span class="history-icon">◐</span>
         PREVIOUS INCARNATIONS
-        <span class="history-icon">⟩⟩⟩</span>
+        <span class="history-icon">◑</span>
       </h2>
       <ol id="history-list">
-        <li class="history-empty">LOADING ARCHAEOLOGICAL RECORDS...</li>
+        <li class="history-empty">excavating memories from the abyss...</li>
       </ol>
     </section>
     
     <template id="note-template">
       <article class="note" draggable="true">
-        <div class="note-corner tl"></div>
-        <div class="note-corner tr"></div>
-        <div class="note-corner bl"></div>
-        <div class="note-corner br"></div>
-        <div class="note-grip" aria-hidden="true">⋮⋮⋮</div>
+        <div class="orb-glow"></div>
+        <div class="note-grip" aria-hidden="true">◉</div>
         <button class="note-delete" title="Delete this post-it" aria-label="Delete">⊗</button>
-        <textarea maxlength="500" aria-label="Post-it content" placeholder="SPEAK YOUR TRUTH..."></textarea>
+        <textarea maxlength="500" aria-label="Post-it content" placeholder="whisper into the void..."></textarea>
         <div class="note-author" aria-label="Author"></div>
-        <div class="note-static"></div>
+        <div class="shimmer-overlay"></div>
       </article>
     </template>
     
