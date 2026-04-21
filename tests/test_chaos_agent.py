@@ -259,6 +259,79 @@ class GetCycleHistoryTests(unittest.TestCase):
         self.assertNotIn("bad", ids)
 
 
+class FetchUrlTests(unittest.TestCase):
+    def test_refuses_non_http(self):
+        res = chaos.tool_fetch_url("ftp://example.com/x")
+        self.assertIn("error", res)
+
+    def test_refuses_localhost(self):
+        res = chaos.tool_fetch_url("http://localhost:8000/foo")
+        self.assertIn("error", res)
+        self.assertIn("block", res["error"])
+
+    def test_refuses_loopback_ip(self):
+        res = chaos.tool_fetch_url("http://127.0.0.1/foo")
+        self.assertIn("error", res)
+
+    def test_refuses_private_ip(self):
+        res = chaos.tool_fetch_url("http://10.0.0.5/foo")
+        self.assertIn("error", res)
+
+    def test_refuses_link_local(self):
+        res = chaos.tool_fetch_url("http://169.254.169.254/latest/meta-data/")
+        self.assertIn("error", res)
+
+    def test_refuses_metadata_hostname(self):
+        res = chaos.tool_fetch_url("http://metadata.google.internal/x")
+        self.assertIn("error", res)
+
+    def test_fetches_success(self):
+        """Happy path with urlopen patched to return small text body."""
+        class _FakeResp:
+            headers = {"Content-Type": "text/css"}
+            def read(self, n=None):
+                return b"body { color: red }"
+            def __enter__(self): return self
+            def __exit__(self, *a): pass
+
+        with mock.patch.object(chaos.urllib.request, "urlopen",
+                               return_value=_FakeResp()):
+            res = chaos.tool_fetch_url("https://example.com/foo.css")
+        self.assertEqual(res["content"], "body { color: red }")
+        self.assertEqual(res["content_type"], "text/css")
+        self.assertFalse(res["truncated"])
+
+    def test_truncates_oversized(self):
+        class _FakeResp:
+            headers = {"Content-Type": "text/html"}
+            def read(self, n=None):
+                # Return max+1 bytes so the tool marks it truncated
+                return b"x" * (chaos.FETCH_URL_MAX_BYTES + 1)
+            def __enter__(self): return self
+            def __exit__(self, *a): pass
+
+        with mock.patch.object(chaos.urllib.request, "urlopen",
+                               return_value=_FakeResp()):
+            res = chaos.tool_fetch_url("https://example.com/big")
+        self.assertTrue(res["truncated"])
+        self.assertEqual(len(res["content"]), chaos.FETCH_URL_MAX_BYTES)
+
+    def test_handles_http_error(self):
+        import io as _io
+        err = chaos.urllib.error.HTTPError(
+            "https://x", 404, "Not Found", {}, _io.BytesIO(b""))
+        with mock.patch.object(chaos.urllib.request, "urlopen", side_effect=err):
+            res = chaos.tool_fetch_url("https://example.com/missing")
+        self.assertIn("error", res)
+        self.assertIn("404", res["error"])
+
+    def test_handles_network_error(self):
+        err = chaos.urllib.error.URLError("DNS fail")
+        with mock.patch.object(chaos.urllib.request, "urlopen", side_effect=err):
+            res = chaos.tool_fetch_url("https://doesnotexist.example.com/")
+        self.assertIn("error", res)
+
+
 class BuildInitialMessageTests(unittest.TestCase):
     def test_includes_summary_and_notes(self):
         msg = chaos.build_initial_message(

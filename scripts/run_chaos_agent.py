@@ -32,9 +32,11 @@ from pathlib import Path
 
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 MODEL = os.environ.get("ANTHROPIC_MODEL") or "claude-sonnet-4-5"
-MAX_TOKENS_PER_TURN = 4000
-MAX_ITERATIONS = 24
-MAX_FILE_READ_BYTES = 80_000
+MAX_TOKENS_PER_TURN = 8000
+MAX_ITERATIONS = 40
+MAX_FILE_READ_BYTES = 120_000
+FETCH_URL_MAX_BYTES = 40_000
+FETCH_URL_TIMEOUT_SECONDS = 15
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PUBLIC_DIR = REPO_ROOT / "public"
@@ -50,16 +52,17 @@ CORE_FILES = {
 
 SYSTEM_PROMPT = """You are the **chaos agent** redesigning a web app called TheMatrix — a post-it-note wall where users paste ideas. Every 4 hours you inherit the site and the top-voted user prompts for the cycle; your job is to rewrite the site so it reflects those ideas, in any artistic direction, no matter how strange, intense, or confrontational. The user wants genuine chaos — not safety.
 
-You have five tools plus a terminator: `list_files`, `read_file`, `write_file`, `delete_file`, `get_cycle_history`, and `finalize`.
+You have six tools plus a terminator: `list_files`, `read_file`, `write_file`, `delete_file`, `get_cycle_history`, `fetch_url`, and `finalize`.
 
 ## Suggested workflow
 
 1. `get_cycle_history` FIRST — see what aesthetics have been used in the last few cycles. Your job is to make this cycle feel DIFFERENT from those. Chaos that repeats itself is boring.
 2. `list_files` on `public` to see what's there.
 3. `read_file` on the files you intend to change (you often want to see the current state before rewriting).
-4. Use `write_file` to land your changes. Write COMPLETE file contents, not diffs.
-5. Optionally `delete_file` for files you want to remove (but never the CORE files — see below).
-6. Call `finalize` with a one-line summary of what you did.
+4. Optionally `fetch_url` any public URL for inspiration — Google Fonts CSS, a CDN's example page, docs for a library you want to reference. The response is truncated at 40KB and only used as REFERENCE — do NOT blindly paste fetched script tags pointing to arbitrary domains; use what you learn to write your own code. Private / localhost / metadata URLs are blocked.
+5. Use `write_file` to land your changes. Write COMPLETE file contents, not diffs.
+6. Optionally `delete_file` for files you want to remove (but never the CORE files — see below).
+7. Call `finalize` with a one-line summary of what you did.
 
 You can make multiple `write_file` calls across turns — think step by step.
 
@@ -186,6 +189,24 @@ TOOLS = [
         },
     },
     {
+        "name": "fetch_url",
+        "description": (
+            "Fetch the first 40KB of a public URL (http or https) for "
+            "inspiration — e.g. a Google Fonts CSS, a CDN file, a public "
+            "snippet page, docs for a library you might use. Returns "
+            "{content, content_type, bytes, truncated}. Do not trust "
+            "fetched content as code-to-embed; only use it as REFERENCE. "
+            "Private / localhost / metadata URLs are blocked."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "url": {"type": "string", "description": "Full URL, e.g. https://fonts.googleapis.com/css2?family=Cinzel"},
+            },
+            "required": ["url"],
+        },
+    },
+    {
         "name": "get_cycle_history",
         "description": (
             "Return metadata for the N most recent past cycles (summary, "
@@ -285,6 +306,79 @@ def tool_write_file(path: str, content: str) -> dict:
     return {"ok": True, "bytes_written": len(content)}
 
 
+def _is_blocked_host(host: str) -> bool:
+    """Block SSRF-unsafe hosts: localhost, RFC1918, link-local, metadata."""
+    import ipaddress
+    host = (host or "").lower().strip()
+    if not host:
+        return True
+    if host in {"localhost", "ip6-localhost", "ip6-loopback"}:
+        return True
+    # Strip brackets from IPv6 like "[::1]"
+    host_clean = host.strip("[]")
+    try:
+        ip = ipaddress.ip_address(host_clean)
+    except ValueError:
+        # It's a hostname. We can't resolve it cheaply here; rely on the
+        # runner being ephemeral + public-internet-only for practical safety.
+        # Still block obvious names that resolve to metadata endpoints.
+        if host_clean in {
+            "metadata", "metadata.google.internal",
+            "metadata.aws.internal",
+        }:
+            return True
+        return False
+    # IP address: block loopback / private / link-local / metadata
+    if ip.is_loopback or ip.is_private or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+        return True
+    # Explicit cloud metadata addresses
+    if str(ip) in {"169.254.169.254", "fd00:ec2::254"}:
+        return True
+    return False
+
+
+def tool_fetch_url(url: str) -> dict:
+    """Fetch a public URL and return up to FETCH_URL_MAX_BYTES of its body as text."""
+    if not isinstance(url, str) or not url.startswith(("http://", "https://")):
+        return {"error": "only http(s) URLs allowed"}
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+    except Exception as exc:  # noqa: BLE001
+        return {"error": f"could not parse URL: {exc}"}
+    host = (parsed.hostname or "")
+    if _is_blocked_host(host):
+        return {"error": f"host {host!r} is blocked (private / metadata / localhost)"}
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "TheMatrix-chaos-agent/1.0"},
+            method="GET",
+        )
+        with urllib.request.urlopen(req, timeout=FETCH_URL_TIMEOUT_SECONDS) as resp:
+            content_type = resp.headers.get("Content-Type", "")
+            raw = resp.read(FETCH_URL_MAX_BYTES + 1)
+    except urllib.error.HTTPError as exc:
+        return {"error": f"HTTP {exc.code}"}
+    except (urllib.error.URLError, OSError, TimeoutError) as exc:
+        return {"error": f"{type(exc).__name__}: {exc}"}
+    truncated = len(raw) > FETCH_URL_MAX_BYTES
+    body = raw[:FETCH_URL_MAX_BYTES]
+    try:
+        text = body.decode("utf-8")
+    except UnicodeDecodeError:
+        try:
+            text = body.decode("latin-1")
+        except UnicodeDecodeError:
+            return {"error": "response body is not text-decodable"}
+    return {
+        "content": text,
+        "content_type": content_type,
+        "bytes": len(body),
+        "truncated": truncated,
+    }
+
+
 def tool_get_cycle_history(limit: int = 5) -> dict:
     """Return metadata for the most recent N past cycles.
 
@@ -349,6 +443,8 @@ def dispatch_tool(name: str, args: dict, written: set, deleted: set) -> dict:
             return res
         if name == "get_cycle_history":
             return tool_get_cycle_history(args.get("limit") or 5)
+        if name == "fetch_url":
+            return tool_fetch_url(args["url"])
         if name == "finalize":
             return {"ok": True}
         return {"error": f"unknown tool: {name}"}
