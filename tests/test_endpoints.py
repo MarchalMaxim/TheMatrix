@@ -299,5 +299,116 @@ class LogsPageTests(unittest.TestCase):
         self.assertEqual(runs[0]["status"], "applied")
 
 
+class AdminEndpointTests(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        os.environ["LOGS_TOKEN"] = "admin-secret-123"
+        self.tmp = tempfile.TemporaryDirectory()
+        self.url, self.stop = _start_server(Path(self.tmp.name))
+        self.addCleanup(self.tmp.cleanup)
+        self.addCleanup(self.stop)
+        self.addCleanup(lambda: os.environ.pop("LOGS_TOKEN", None))
+
+    def test_get_admin_without_token_returns_404(self):
+        try:
+            urllib.request.urlopen(f"{self.url}/admin")
+            self.fail("expected 404")
+        except urllib.error.HTTPError as e:
+            self.assertEqual(e.code, 404)
+
+    def test_get_admin_with_wrong_token_returns_404(self):
+        try:
+            urllib.request.urlopen(f"{self.url}/admin?token=nope")
+            self.fail("expected 404")
+        except urllib.error.HTTPError as e:
+            self.assertEqual(e.code, 404)
+
+    def test_get_admin_with_valid_token_returns_html(self):
+        with urllib.request.urlopen(f"{self.url}/admin?token=admin-secret-123") as r:
+            body = r.read().decode("utf-8")
+        self.assertIn("TheMatrix Admin", body)
+        self.assertIn("Save & commit", body)
+
+    def test_admin_save_without_token_404s(self):
+        body = json.dumps({"path": "public/x.html", "content": "x"}).encode()
+        req = urllib.request.Request(
+            f"{self.url}/admin/save",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            urllib.request.urlopen(req)
+            self.fail("expected 404")
+        except urllib.error.HTTPError as e:
+            self.assertEqual(e.code, 404)
+
+    def test_admin_save_rejects_path_outside_public(self):
+        body = json.dumps({
+            "token": "admin-secret-123",
+            "path": "server.py",
+            "content": "x",
+        }).encode()
+        req = urllib.request.Request(
+            f"{self.url}/admin/save",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            urllib.request.urlopen(req)
+            self.fail("expected 400")
+        except urllib.error.HTTPError as e:
+            self.assertEqual(e.code, 400)
+
+    def test_admin_save_rejects_path_traversal(self):
+        body = json.dumps({
+            "token": "admin-secret-123",
+            "path": "public/../server.py",
+            "content": "x",
+        }).encode()
+        req = urllib.request.Request(
+            f"{self.url}/admin/save",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            urllib.request.urlopen(req)
+            self.fail("expected 400")
+        except urllib.error.HTTPError as e:
+            self.assertEqual(e.code, 400)
+
+    def test_admin_save_calls_github_put_on_valid_request(self):
+        # Patch github_content.put_file so we don't hit the network
+        import github_content as gc
+        call_args = {}
+        def fake_put(path, content, sha, message):
+            call_args["path"] = path
+            call_args["content"] = content
+            call_args["message"] = message
+            return {"commit": {"sha": "abc123"}, "content": {"sha": "def456"}}
+        with mock.patch.object(gc, "put_file", fake_put):
+            body = json.dumps({
+                "token": "admin-secret-123",
+                "path": "public/test.html",
+                "content": "<p>hello</p>",
+                "message": "admin: test edit",
+            }).encode()
+            req = urllib.request.Request(
+                f"{self.url}/admin/save",
+                data=body,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req) as r:
+                self.assertEqual(r.status, 200)
+                data = json.loads(r.read())
+        self.assertTrue(data["ok"])
+        self.assertEqual(data["commit_sha"], "abc123")
+        self.assertEqual(call_args["path"], "public/test.html")
+        self.assertEqual(call_args["content"], "<p>hello</p>")
+
+
 if __name__ == "__main__":
     unittest.main()

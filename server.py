@@ -19,6 +19,7 @@ import abuse
 import logs
 import lint
 import agent as agent_mod
+import github_content
 
 PUBLIC_DIR = storage.PUBLIC_DIR
 DATA_DIR = storage.DATA_DIR
@@ -588,6 +589,7 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
             "\">"
             "⚡ Trigger cycle now"
             "</button>"
+            f" <a href=\"/admin?token={token_esc}\" style=\"margin-left:1rem\">📝 Edit files</a>"
             "</p>"
             "<h2>Run Queue</h2>"
             f"<table><tr><th>run_id</th><th>cycle_id</th><th>status</th><th>error</th><th>action</th></tr>"
@@ -631,9 +633,11 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
             if archive is None:
                 self.send_error(HTTPStatus.NOT_FOUND, "Not Found"); return
             self._send_json(archive); return
-        # /logs — token-gated operator page
-        logs_path = self.path.split("?", 1)[0]
-        if logs_path == "/logs":
+        # Path segment without query string for operator pages.
+        page_path = self.path.split("?", 1)[0]
+
+        # /logs — token-gated operator logs
+        if page_path == "/logs":
             expected = self._logs_token()
             provided = self._query_param("token")
             if not expected or provided != expected:
@@ -645,6 +649,45 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+
+        # /admin — token-gated file editor (commits to main via GitHub API)
+        if page_path == "/admin":
+            if not self._admin_authorised():
+                self.send_error(HTTPStatus.NOT_FOUND, "Not Found"); return
+            body = self._render_admin_page().encode("utf-8")
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
+        # /admin/list — JSON list of editable paths on main
+        if page_path == "/admin/list":
+            if not self._admin_authorised():
+                self.send_error(HTTPStatus.NOT_FOUND, "Not Found"); return
+            try:
+                files = github_content.list_public_files()
+            except github_content.GithubContentError as exc:
+                self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_GATEWAY); return
+            self._send_json({"files": files})
+            return
+
+        # /admin/file?path=… — fetch current content + sha of a single file
+        if page_path == "/admin/file":
+            if not self._admin_authorised():
+                self.send_error(HTTPStatus.NOT_FOUND, "Not Found"); return
+            path = self._query_param("path") or ""
+            if not path.startswith("public/"):
+                self._send_json({"error": "path must start with public/"},
+                                status=HTTPStatus.BAD_REQUEST); return
+            try:
+                content, sha = github_content.get_file(path)
+            except github_content.GithubContentError as exc:
+                self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_GATEWAY); return
+            self._send_json({"path": path, "content": content, "sha": sha})
+            return
+
         return super().do_GET()
 
     def _client_ip(self) -> str:
@@ -668,10 +711,178 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
             return self._handle_logs_merge()
         if self.path == "/api/trigger-cycle":
             return self._handle_trigger_cycle()
+        if self.path == "/admin/save":
+            return self._handle_admin_save()
         vote_match = re.match(r"^/api/notes/([^/]+)/vote$", self.path)
         if vote_match:
             return self._handle_vote(vote_match.group(1))
         self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
+
+    # ------------------------------------------------------------------
+    # /admin helpers — token-gated file editor backed by GitHub Contents API
+    # ------------------------------------------------------------------
+
+    def _admin_authorised(self) -> bool:
+        """True if caller supplied the correct LOGS_TOKEN (via query for GET
+        or via JSON body / X-Logs-Token header for POST)."""
+        expected = self._logs_token()
+        if not expected:
+            return False
+        return (self._query_param("token") or "") == expected
+
+    def _handle_admin_save(self) -> None:
+        """Commit a file edit to main via GitHub Contents API. That push
+        triggers deploy.yml, which rolls out the change to Cloud Run."""
+        try:
+            payload = self._read_json()
+        except (json.JSONDecodeError, ValueError):
+            self._send_json({"error": "body must be JSON"},
+                            status=HTTPStatus.BAD_REQUEST); return
+        token = str(payload.get("token", ""))
+        header_token = self.headers.get("X-Logs-Token", "")
+        expected = self._logs_token()
+        if not expected or (token != expected and header_token != expected):
+            self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
+            return
+        path = str(payload.get("path", ""))
+        content = payload.get("content")
+        message = str(payload.get("message") or f"admin: edit {path}")
+        sha = payload.get("sha") or None
+        # Hard path restriction — never let admin edit outside public/
+        if not path.startswith("public/") or ".." in path.split("/"):
+            self._send_json({"error": "path must start with public/ and cannot contain .."},
+                            status=HTTPStatus.BAD_REQUEST); return
+        if not isinstance(content, str):
+            self._send_json({"error": "content must be a string"},
+                            status=HTTPStatus.BAD_REQUEST); return
+        try:
+            result = github_content.put_file(path, content, sha, message[:200])
+        except github_content.GithubContentError as exc:
+            logs.log("error", "admin save failed", path=path, error=str(exc))
+            self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_GATEWAY); return
+        commit_sha = (result.get("commit") or {}).get("sha") or ""
+        logs.log("info", "admin save committed", path=path, sha=commit_sha)
+        self._send_json({"ok": True, "commit_sha": commit_sha,
+                         "content_sha": (result.get("content") or {}).get("sha")})
+
+    def _render_admin_page(self) -> str:
+        """Return a full self-contained HTML page for editing public/ files."""
+        import html as html_mod
+        token_js = html_mod.escape(self._logs_token() or "", quote=True)
+        return (
+            "<!doctype html><html><head><meta charset=utf-8>"
+            "<title>TheMatrix — Admin</title>"
+            "<style>"
+            "body{font-family:system-ui,sans-serif;margin:0;background:#111;color:#eee;}"
+            "header{padding:0.8rem 1rem;border-bottom:1px solid #333;background:#1a1a1a;}"
+            "header h1{margin:0;font-size:1rem;font-weight:600;}"
+            ".grid{display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 52px);}"
+            ".sidebar{border-right:1px solid #333;overflow-y:auto;padding:0.5rem;}"
+            ".sidebar input{width:100%;padding:0.4rem;background:#222;color:#eee;border:1px solid #333;box-sizing:border-box;margin-bottom:0.5rem;}"
+            ".sidebar button{width:100%;padding:0.4rem;background:#333;color:#eee;border:1px solid #444;cursor:pointer;margin-bottom:1rem;}"
+            ".sidebar ul{list-style:none;padding:0;margin:0;}"
+            ".sidebar li{padding:0.3rem 0.4rem;cursor:pointer;border-radius:3px;font-family:monospace;font-size:0.82rem;word-break:break-all;}"
+            ".sidebar li:hover{background:#222;}"
+            ".sidebar li.active{background:#2a4070;}"
+            ".editor{display:flex;flex-direction:column;padding:0.5rem;}"
+            ".editor textarea{flex:1;width:100%;background:#0a0a0a;color:#eee;border:1px solid #333;font-family:monospace;font-size:0.85rem;padding:0.5rem;resize:none;box-sizing:border-box;}"
+            ".bar{display:flex;gap:0.5rem;padding:0.5rem 0;align-items:center;}"
+            ".bar input{flex:1;padding:0.4rem;background:#222;color:#eee;border:1px solid #333;}"
+            ".bar button{padding:0.4rem 1rem;background:#2a5a30;color:#eee;border:1px solid #3a7040;cursor:pointer;font-weight:600;}"
+            ".bar button:hover{background:#3a7040;}"
+            ".bar button:disabled{opacity:0.5;cursor:not-allowed;}"
+            ".status{font-family:monospace;font-size:0.8rem;padding:0.3rem 0.5rem;border-radius:3px;}"
+            ".status.ok{background:#1a3a1a;color:#8eff8e;}"
+            ".status.err{background:#3a1a1a;color:#ff8e8e;}"
+            ".status.info{color:#aaa;}"
+            ".current-path{font-family:monospace;color:#8af;font-size:0.85rem;}"
+            "</style></head><body>"
+            "<header><h1>⚙ TheMatrix Admin — editing files on main via GitHub API</h1></header>"
+            "<div class='grid'>"
+            "  <aside class='sidebar'>"
+            "    <button id='refresh-list'>↻ Refresh file list</button>"
+            "    <div style='font-size:0.78rem;color:#888;margin-bottom:0.3rem;'>or type a new path:</div>"
+            "    <input id='new-path' placeholder='public/new-file.html'>"
+            "    <button id='create-btn' style='margin-bottom:1rem'>Load / create</button>"
+            "    <ul id='file-list'><li class='status info'>loading…</li></ul>"
+            "  </aside>"
+            "  <main class='editor'>"
+            "    <div>Editing: <span id='current-path' class='current-path'>(nothing)</span>"
+            " <span id='file-status' class='status info' style='margin-left:1rem'></span></div>"
+            "    <textarea id='content' spellcheck='false' placeholder='pick a file from the left'></textarea>"
+            "    <div class='bar'>"
+            "      <input id='commit-msg' placeholder='Commit message (optional)'>"
+            "      <button id='save-btn' disabled>💾 Save & commit to main</button>"
+            "    </div>"
+            "    <div id='save-status' class='status info'></div>"
+            "  </main>"
+            "</div>"
+            "<script>"
+            f"const TOKEN={json.dumps(token_js)};"
+            "let currentPath=null,currentSha=null;"
+            "async function j(method,url,body){"
+            "  const opts={method,headers:{'Content-Type':'application/json'}};"
+            "  if(body)opts.body=JSON.stringify(body);"
+            "  const r=await fetch(url,opts);"
+            "  const t=await r.text();"
+            "  let d={};try{d=JSON.parse(t)}catch(e){d={raw:t}}"
+            "  return{ok:r.ok,status:r.status,data:d};"
+            "}"
+            "function setFileStatus(txt,cls){const el=document.getElementById('file-status');el.textContent=txt;el.className='status '+cls;}"
+            "function setSaveStatus(txt,cls){const el=document.getElementById('save-status');el.textContent=txt;el.className='status '+cls;}"
+            "async function loadList(){"
+            "  const r=await j('GET','/admin/list?token='+encodeURIComponent(TOKEN));"
+            "  const ul=document.getElementById('file-list');ul.innerHTML='';"
+            "  if(!r.ok){ul.innerHTML='<li class=\"status err\">'+(r.data.error||r.status)+'</li>';return;}"
+            "  r.data.files.forEach(p=>{"
+            "    const li=document.createElement('li');li.textContent=p;"
+            "    li.onclick=()=>loadFile(p);"
+            "    li.dataset.path=p;"
+            "    ul.appendChild(li);"
+            "  });"
+            "}"
+            "async function loadFile(path){"
+            "  setFileStatus('loading…','info');"
+            "  document.querySelectorAll('#file-list li').forEach(el=>{"
+            "    el.classList.toggle('active',el.dataset.path===path);"
+            "  });"
+            "  const r=await j('GET','/admin/file?token='+encodeURIComponent(TOKEN)+'&path='+encodeURIComponent(path));"
+            "  if(!r.ok){setFileStatus(r.data.error||('HTTP '+r.status),'err');return;}"
+            "  currentPath=r.data.path;currentSha=r.data.sha;"
+            "  document.getElementById('content').value=r.data.content;"
+            "  document.getElementById('current-path').textContent=currentPath;"
+            "  document.getElementById('save-btn').disabled=false;"
+            "  setFileStatus('loaded ('+r.data.content.length+'B, sha='+currentSha.slice(0,8)+')','ok');"
+            "}"
+            "function createNew(){"
+            "  const p=document.getElementById('new-path').value.trim();"
+            "  if(!p){setFileStatus('enter a path','err');return;}"
+            "  if(!p.startsWith('public/')){setFileStatus('path must start with public/','err');return;}"
+            "  loadFile(p).catch(()=>{"
+            "    currentPath=p;currentSha=null;"
+            "    document.getElementById('content').value='';"
+            "    document.getElementById('current-path').textContent=p+' (NEW)';"
+            "    document.getElementById('save-btn').disabled=false;"
+            "    setFileStatus('new file — will be created on save','info');"
+            "  });"
+            "}"
+            "async function save(){"
+            "  if(!currentPath){return;}"
+            "  setSaveStatus('saving…','info');"
+            "  const content=document.getElementById('content').value;"
+            "  const message=document.getElementById('commit-msg').value.trim();"
+            "  const r=await j('POST','/admin/save',{token:TOKEN,path:currentPath,content,sha:currentSha,message});"
+            "  if(!r.ok){setSaveStatus('FAILED: '+(r.data.error||r.status),'err');return;}"
+            "  setSaveStatus('committed '+(r.data.commit_sha||'').slice(0,8)+' — deploy.yml should fire now','ok');"
+            "  currentSha=r.data.content_sha||currentSha;"
+            "}"
+            "document.getElementById('refresh-list').onclick=loadList;"
+            "document.getElementById('create-btn').onclick=createNew;"
+            "document.getElementById('save-btn').onclick=save;"
+            "loadList();"
+            "</script>"
+            "</body></html>"
+        )
 
     def _handle_trigger_cycle(self) -> None:
         """Operator endpoint: wake the worker early to close the current cycle.
