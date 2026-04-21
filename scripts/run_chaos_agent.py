@@ -38,6 +38,16 @@ MAX_FILE_READ_BYTES = 120_000
 FETCH_URL_MAX_BYTES = 40_000
 FETCH_URL_TIMEOUT_SECONDS = 15
 
+# Per-API-call timeout. Shorter than before (300s) so a single hung call
+# can't blow the entire wall-clock budget.
+ANTHROPIC_CALL_TIMEOUT = 120
+
+# Hard wall-clock budget for the entire agent loop. If we hit this, we
+# break out of the loop gracefully and let the commit step run on whatever
+# files were already written. MUST be well below the workflow's job
+# timeout-minutes so the commit step has time to finish.
+WALL_CLOCK_BUDGET_SECONDS = int(os.environ.get("CHAOS_WALL_CLOCK_BUDGET") or 14 * 60)
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PUBLIC_DIR = REPO_ROOT / "public"
 
@@ -479,7 +489,7 @@ def anthropic_call(messages: list) -> dict:
         },
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=300) as resp:
+    with urllib.request.urlopen(req, timeout=ANTHROPIC_CALL_TIMEOUT) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 
@@ -509,14 +519,26 @@ def build_initial_message(summary: str, notes: list) -> str:
 
 
 def run_agent_loop(summary: str, notes: list) -> dict:
+    import time as _time
     messages = [{"role": "user", "content": build_initial_message(summary, notes)}]
     written: set[str] = set()
     deleted: set[str] = set()
     finalized = False
     final_summary = ""
+    budget_hit = False
+    started_at = _time.monotonic()
 
     for turn in range(MAX_ITERATIONS):
-        print(f"[chaos] turn {turn + 1}/{MAX_ITERATIONS}", file=sys.stderr)
+        elapsed = _time.monotonic() - started_at
+        if elapsed > WALL_CLOCK_BUDGET_SECONDS:
+            print(f"[chaos] WALL-CLOCK BUDGET HIT after {elapsed:.0f}s "
+                  f"(budget={WALL_CLOCK_BUDGET_SECONDS}s) — committing partial work",
+                  file=sys.stderr)
+            budget_hit = True
+            break
+        print(f"[chaos] turn {turn + 1}/{MAX_ITERATIONS} "
+              f"(elapsed={elapsed:.0f}s / {WALL_CLOCK_BUDGET_SECONDS}s)",
+              file=sys.stderr)
         response = anthropic_call(messages)
         assistant_blocks = response.get("content", [])
         messages.append({"role": "assistant", "content": assistant_blocks})
@@ -578,6 +600,7 @@ def run_agent_loop(summary: str, notes: list) -> dict:
         "deleted": sorted(deleted),
         "final_summary": final_summary,
         "finalized": finalized,
+        "budget_hit": budget_hit,
     }
 
 
@@ -628,7 +651,10 @@ def main() -> int:
         print(f"  [-] {p}")
     if outcome["final_summary"]:
         print(f"[chaos] summary: {outcome['final_summary']}")
-    if not outcome["finalized"]:
+    if outcome.get("budget_hit"):
+        print(f"[chaos] NOTE: wall-clock budget hit before finalize — "
+              f"committing whatever was written", file=sys.stderr)
+    elif not outcome["finalized"]:
         print("[chaos] NOTE: agent did not call finalize — changes committed anyway",
               file=sys.stderr)
 
@@ -643,6 +669,8 @@ def main() -> int:
             "notes": notes,
             "files_written": written,
             "files_deleted": deleted,
+            "budget_hit": bool(outcome.get("budget_hit")),
+            "finalized": bool(outcome.get("finalized")),
         }, indent=2),
         encoding="utf-8",
     )

@@ -332,6 +332,63 @@ class FetchUrlTests(unittest.TestCase):
         self.assertIn("error", res)
 
 
+class WallClockBudgetTests(unittest.TestCase):
+    """The agent must stop calling the API once it's used up its wall-clock
+    budget, so the workflow's commit step still has time to salvage partial
+    work."""
+
+    @staticmethod
+    def _fake_time_module(sequence):
+        """Return an object mimicking `time` with a scripted monotonic()."""
+        import types
+        it = iter(sequence)
+        return types.SimpleNamespace(monotonic=lambda: next(it))
+
+    def test_budget_hit_breaks_loop_before_first_turn(self):
+        # Script monotonic so t=0 at start, t=999 on first in-loop check.
+        # With budget=10s, loop breaks without any API call.
+        fake_time = self._fake_time_module([0.0, 999.0])
+        with mock.patch.object(chaos, "anthropic_call") as fake_call, \
+             mock.patch.object(chaos, "WALL_CLOCK_BUDGET_SECONDS", 10), \
+             mock.patch.dict("sys.modules", {"time": fake_time}):
+            outcome = chaos.run_agent_loop("summary", [])
+        self.assertFalse(fake_call.called)
+        self.assertTrue(outcome["budget_hit"])
+        self.assertFalse(outcome["finalized"])
+        self.assertEqual(outcome["written"], [])
+
+    def test_budget_hit_after_partial_work_preserves_writes(self):
+        """Simulate: agent writes 2 files across 2 turns, then budget hits."""
+        with _TempRepo():
+            call_count = {"n": 0}
+
+            def fake_call(messages):
+                call_count["n"] += 1
+                n = call_count["n"]
+                return {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "id": f"tu_{n}",
+                            "name": "write_file",
+                            "input": {"path": f"public/new{n}.html", "content": f"<p>{n}</p>"},
+                        }
+                    ]
+                }
+
+            # monotonic sequence: start=0, check-turn0=1, check-turn1=2,
+            # check-turn2=999 (budget breaks loop). Budget=10s.
+            fake_time = self._fake_time_module([0.0, 1.0, 2.0, 999.0])
+            with mock.patch.object(chaos, "anthropic_call", side_effect=fake_call), \
+                 mock.patch.object(chaos, "WALL_CLOCK_BUDGET_SECONDS", 10), \
+                 mock.patch.dict("sys.modules", {"time": fake_time}):
+                outcome = chaos.run_agent_loop("summary", [])
+        # 2 writes succeeded before the budget killed turn 3
+        self.assertTrue(outcome["budget_hit"])
+        self.assertEqual(len(outcome["written"]), 2)
+        self.assertFalse(outcome["finalized"])
+
+
 class BuildInitialMessageTests(unittest.TestCase):
     def test_includes_summary_and_notes(self):
         msg = chaos.build_initial_message(
