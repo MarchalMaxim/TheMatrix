@@ -99,6 +99,28 @@ You can make multiple `write_file` calls across turns — think step by step.
 Everything else is yours. Rewrite colours, layout, typography, copy, language, text direction, animations, decorative DOM, custom fonts, wild backgrounds, alternate cursors, CSS filters, WebGL overlays, extra sections, extra images (inline SVG only), sounds via the Web Audio API — anything. Make the site feel like it came from a different dimension than last cycle.
 
 Resist the temptation to be tasteful. The interesting cycles are the ones that commit to an aesthetic.
+
+## Scale up the canvas
+
+Don't settle for a single-page site with two files. Go bigger each cycle:
+
+- **Add new pages.** Create `public/manifesto.html`, `public/gallery.html`, `public/about.html`, `public/<whatever>.html` — as many as the aesthetic demands. Static files under `public/` are served directly by the server (e.g. `public/about.html` → `https://site/about.html`). A hero page that links out to 2-3 themed subpages is far more interesting than one long scroller.
+  - **Crucial:** a new page is INVISIBLE unless you link to it. When you create a page, ALSO add a nav link / button / floating chip / themed menu / footer link on index.html (or another already-reachable page) so users can find it. An orphaned page is a wasted file.
+  - Pages can have their own page-specific CSS file (e.g. `public/gallery.css`) — just `<link>` it in the new page's head.
+
+- **Stack the DOM.** Index.html doesn't have to be minimal. Add multiple `<section>`s: lore, stats widgets, a running commentary from the "ghost of a past cycle," a scrollable gallery of inline SVG art, a sticky bar, a side panel, modal overlays, animated mascots. Layered pages with narrative depth outperform clean-but-empty ones.
+
+- **Write JavaScript based on the post-its.** This is first-class, not decoration. If a post-it asks for "a pet cat that follows the cursor" — BUILD THAT: a new `public/cat.js`, a <canvas> or floating DOM element, mousemove handlers, animations. If it asks for "a countdown to my birthday" — build it. If it asks for "a mini snake game in the corner" — build it. If it asks for "a live ticker of random facts" — build it. Add new script files freely (`public/<feature>.js`) and `<script src>` them from index.html or from a new sub-page. You can modify `public/app.js` directly too. The only hard constraints are:
+  - The post-it core calls in HARD INVARIANT 1 must still work (so don't break `createNewNote`, the PoW worker spawn, the PUT/DELETE handlers in `app.js`).
+  - `pow-worker.js` must not be modified unless you understand SHA-256 leading-zero-bits.
+
+  Everything else is fair game: canvas drawing, WebGL, Web Audio, `requestAnimationFrame` loops, `IntersectionObserver`-driven animations, `fetch`-ing your own endpoints, localStorage games, multi-page state, whatever the post-its inspire. Make it interactive. Make it do something.
+
+- **Inline SVG illustrations.** You don't need image files. A `<svg viewBox="…">` inside the HTML can hold full illustrations, diagrams, creatures, patterns. Use them.
+
+- **Commit to a visual language.** If the cycle's theme is "medieval scroll," make EVERYTHING medieval — parchment textures, Gothic serif all-caps, illuminated drop caps, margin decorations, icons that look like woodcuts. Half-finished aesthetics read as mistakes; committed ones read as art.
+
+When in doubt: add a page, add a panel, add a script.
 """
 
 TOOLS = [
@@ -378,8 +400,15 @@ def build_initial_message(summary: str, notes: list) -> str:
     return (
         f"CYCLE SUMMARY:\n{summary}\n\n"
         f"TOP USER PROMPTS (prioritise the ones with more votes):\n{note_lines}\n\n"
-        f"Explore the current files under public/ with list_files and read_file, "
-        f"then rewrite whatever you want with write_file. Call finalize when done."
+        f"Read those prompts LITERALLY. If someone asks for a pet cat that "
+        f"follows the cursor, a countdown timer, a mini game, a sound-reactive "
+        f"visualisation, a second page, a dropdown of haikus — BUILD IT. Write "
+        f"JavaScript. Add new HTML pages. Add new JS files. Link them. The tools "
+        f"let you create arbitrary files under public/.\n\n"
+        f"Workflow: start with `get_cycle_history` to avoid repeating the last "
+        f"few aesthetics. Then `list_files` and `read_file` to understand the "
+        f"current state. Then `write_file` freely — new pages, new scripts, "
+        f"modified index.html/app.js/styles.css. Call `finalize` when done."
     )
 
 
