@@ -50,15 +50,16 @@ CORE_FILES = {
 
 SYSTEM_PROMPT = """You are the **chaos agent** redesigning a web app called TheMatrix — a post-it-note wall where users paste ideas. Every 4 hours you inherit the site and the top-voted user prompts for the cycle; your job is to rewrite the site so it reflects those ideas, in any artistic direction, no matter how strange, intense, or confrontational. The user wants genuine chaos — not safety.
 
-You have four tools: `list_files`, `read_file`, `write_file`, `delete_file`, and one terminator: `finalize`.
+You have five tools plus a terminator: `list_files`, `read_file`, `write_file`, `delete_file`, `get_cycle_history`, and `finalize`.
 
 ## Suggested workflow
 
-1. `list_files` on `public` to see what's there.
-2. `read_file` on the files you intend to change (you often want to see the current state before rewriting).
-3. Use `write_file` to land your changes. Write COMPLETE file contents, not diffs.
-4. Optionally `delete_file` for files you want to remove (but never the CORE files — see below).
-5. Call `finalize` with a one-line summary of what you did.
+1. `get_cycle_history` FIRST — see what aesthetics have been used in the last few cycles. Your job is to make this cycle feel DIFFERENT from those. Chaos that repeats itself is boring.
+2. `list_files` on `public` to see what's there.
+3. `read_file` on the files you intend to change (you often want to see the current state before rewriting).
+4. Use `write_file` to land your changes. Write COMPLETE file contents, not diffs.
+5. Optionally `delete_file` for files you want to remove (but never the CORE files — see below).
+6. Call `finalize` with a one-line summary of what you did.
 
 You can make multiple `write_file` calls across turns — think step by step.
 
@@ -66,6 +67,7 @@ You can make multiple `write_file` calls across turns — think step by step.
 
 1. The frontend MUST continue to call these server endpoints (they power the post-it flow):
    - GET    /api/notes, /api/pow-challenge, /api/worker-status, /api/cycle/current
+   - GET    /api/cycles/previous    (returns {handoff_id, summary, agent_summary, notes:[…]})
    - POST   /api/notes (create, with {text, pow, challenge, x, y, color})
    - PUT    /api/notes/<id> (move/edit)
    - DELETE /api/notes/<id> (owner only)
@@ -79,7 +81,18 @@ You can make multiple `write_file` calls across turns — think step by step.
 
 5. There MUST NOT be a "trigger cycle" / "rupture now" / equivalent button on the public page. Cycle triggering is operator-only. Do not add one back, even thematically.
 
-6. Do not rewrite anything outside `public/`. The tools enforce this but don't test it.
+6. The index page MUST include a "previous cycle" preview section that shows users the prompt-summary and the post-its that fed the LAST cycle. The required DOM anchors are:
+     <section id="previous-cycle" data-invariant="previous-cycle">
+       <h2>…themed heading…</h2>
+       <p id="prev-cycle-summary"></p>
+       <details id="prev-cycle-details">
+         <summary><span id="prev-cycle-count">0</span> <span>…themed noun…</span></summary>
+         <ul id="prev-cycle-notes-list"></ul>
+       </details>
+     </section>
+   You can restyle this section aggressively (copy, icons, fonts, borders, animations) but keep ALL the listed IDs exactly so `/app.js` can populate it from `/api/cycles/previous`. Don't move it inside a <template> and don't hide it with display:none.
+
+7. Do not rewrite anything outside `public/`. The tools enforce this but don't test it.
 
 ## Creative license
 
@@ -148,6 +161,25 @@ TOOLS = [
                 "path": {"type": "string"},
             },
             "required": ["path"],
+        },
+    },
+    {
+        "name": "get_cycle_history",
+        "description": (
+            "Return metadata for the N most recent past cycles (summary, "
+            "agent_summary, note_count, files_written, handoff_id). Use this "
+            "at the start to AVOID REPEATING a recent aesthetic — the whole "
+            "point of chaos is that each cycle feels different from the last."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "How many past cycles to return (default 5, max 20).",
+                },
+            },
+            "required": [],
         },
     },
     {
@@ -231,6 +263,35 @@ def tool_write_file(path: str, content: str) -> dict:
     return {"ok": True, "bytes_written": len(content)}
 
 
+def tool_get_cycle_history(limit: int = 5) -> dict:
+    """Return metadata for the most recent N past cycles.
+
+    Reads public/cycles/*.json (the per-cycle metadata the agent writes at the
+    end of each run). Sorted newest-first by mtime. Does NOT include the full
+    notes array — that would bloat the tool response; the summary + agent
+    summary are enough to recognise and differentiate from past aesthetics.
+    """
+    limit = max(1, min(int(limit or 5), 20))
+    cycles_dir = PUBLIC_DIR / "cycles"
+    if not cycles_dir.is_dir():
+        return {"cycles": [], "note": "no cycles directory yet"}
+    files = sorted(cycles_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    out = []
+    for f in files[:limit]:
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        out.append({
+            "handoff_id": data.get("handoff_id"),
+            "summary": (data.get("summary") or "")[:300],
+            "agent_summary": (data.get("agent_summary") or "")[:300],
+            "note_count": len(data.get("notes") or []),
+            "files_written": (data.get("files_written") or [])[:20],
+        })
+    return {"cycles": out, "count": len(out)}
+
+
 def tool_delete_file(path: str) -> dict:
     if not path.startswith("public/"):
         return {"error": "deletes only allowed under public/"}
@@ -264,6 +325,8 @@ def dispatch_tool(name: str, args: dict, written: set, deleted: set) -> dict:
                 deleted.add(args["path"])
                 written.discard(args["path"])
             return res
+        if name == "get_cycle_history":
+            return tool_get_cycle_history(args.get("limit") or 5)
         if name == "finalize":
             return {"ok": True}
         return {"error": f"unknown tool: {name}"}

@@ -506,6 +506,71 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
         return out
 
     # ------------------------------------------------------------------
+    # Public cycles directory — used for the "previous cycle" UI section
+    # ------------------------------------------------------------------
+
+    def _public_cycles_dir(self) -> Path:
+        # Use storage.PUBLIC_DIR (not the module-level alias) so test fixtures
+        # that patch storage.PUBLIC_DIR also affect this lookup.
+        return storage.PUBLIC_DIR / "cycles"
+
+    def _read_cycle_file_safe(self, path: Path) -> dict | None:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                return None
+            return data
+        except (OSError, json.JSONDecodeError):
+            return None
+
+    def _sanitize_cycle_for_public(self, data: dict) -> dict:
+        """Strip hashes / internal fields from each note before exposing."""
+        raw_notes = data.get("notes") or []
+        clean_notes = []
+        for n in raw_notes:
+            if not isinstance(n, dict):
+                continue
+            clean_notes.append({
+                "text": (n.get("text") or "")[:500],
+                "votes": int(n.get("votes") or 0),
+                "author_label": n.get("author_label") or "",
+                "createdAt": n.get("createdAt") or "",
+                "color": n.get("color") or "",
+            })
+        return {
+            "handoff_id": data.get("handoff_id") or "",
+            "summary": data.get("summary") or "",
+            "agent_summary": data.get("agent_summary") or "",
+            "notes": clean_notes,
+            "files_written": data.get("files_written") or [],
+            "files_deleted": data.get("files_deleted") or [],
+        }
+
+    def _read_latest_public_cycle(self) -> dict | None:
+        d = self._public_cycles_dir()
+        if not d.is_dir():
+            return None
+        files = sorted(d.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        for f in files:
+            data = self._read_cycle_file_safe(f)
+            if data is not None:
+                return self._sanitize_cycle_for_public(data)
+        return None
+
+    def _read_recent_public_cycles(self, limit: int) -> list[dict]:
+        d = self._public_cycles_dir()
+        if not d.is_dir():
+            return []
+        files = sorted(d.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        out = []
+        for f in files[:limit]:
+            data = self._read_cycle_file_safe(f)
+            if data is None:
+                continue
+            out.append(self._sanitize_cycle_for_public(data))
+        return out
+
+    # ------------------------------------------------------------------
     # /logs helpers
     # ------------------------------------------------------------------
 
@@ -626,6 +691,20 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
             self._send_json(sanitised); return
         if self.path == "/api/cycle/current":
             self._send_json(storage.read_json(storage.CURRENT_CYCLE_PATH, default={})); return
+        if self.path.startswith("/api/cycles/previous"):
+            # Latest single cycle metadata written by the chaos agent
+            latest = self._read_latest_public_cycle()
+            if latest is None:
+                self._send_json({}); return
+            self._send_json(latest); return
+        if self.path.startswith("/api/cycles/recent"):
+            # N most recent cycles (for history views)
+            limit = 10
+            try:
+                limit = max(1, min(int(self._query_param("limit") or "10"), 50))
+            except ValueError:
+                pass
+            self._send_json({"cycles": self._read_recent_public_cycles(limit)}); return
         cycle_match = re.match(r"^/api/cycle/([^/]+)$", self.path)
         if cycle_match:
             cycle_id = cycle_match.group(1)

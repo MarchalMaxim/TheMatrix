@@ -193,6 +193,72 @@ class DispatchTests(unittest.TestCase):
         self.assertIn("error", res)
 
 
+class GetCycleHistoryTests(unittest.TestCase):
+    def test_returns_empty_when_no_cycles_dir(self):
+        with _TempRepo():
+            res = chaos.tool_get_cycle_history()
+        self.assertEqual(res["cycles"], [])
+
+    def test_returns_cycles_newest_first(self):
+        with _TempRepo() as r:
+            cycles = r.public / "cycles"
+            cycles.mkdir()
+            # Oldest
+            (cycles / "aaa.json").write_text(json.dumps({
+                "handoff_id": "aaa",
+                "summary": "first cycle",
+                "agent_summary": "made it pink",
+                "notes": [{"text": "hi"}],
+                "files_written": ["public/styles.css"],
+            }))
+            import os as _os, time as _time
+            _os.utime(cycles / "aaa.json", (_time.time() - 3600, _time.time() - 3600))
+            # Newest
+            (cycles / "bbb.json").write_text(json.dumps({
+                "handoff_id": "bbb",
+                "summary": "second cycle",
+                "agent_summary": "made it green",
+                "notes": [],
+                "files_written": [],
+            }))
+            res = chaos.tool_get_cycle_history()
+        self.assertEqual(len(res["cycles"]), 2)
+        self.assertEqual(res["cycles"][0]["handoff_id"], "bbb")
+        self.assertEqual(res["cycles"][1]["handoff_id"], "aaa")
+
+    def test_honours_limit(self):
+        with _TempRepo() as r:
+            cycles = r.public / "cycles"
+            cycles.mkdir()
+            for i in range(5):
+                (cycles / f"c{i}.json").write_text(json.dumps({
+                    "handoff_id": f"c{i}",
+                    "summary": f"cycle {i}",
+                    "notes": [],
+                }))
+            res = chaos.tool_get_cycle_history(limit=2)
+        self.assertEqual(len(res["cycles"]), 2)
+
+    def test_clamps_out_of_range_limit(self):
+        with _TempRepo() as r:
+            cycles = r.public / "cycles"
+            cycles.mkdir()
+            res = chaos.tool_get_cycle_history(limit=1000)
+        # Accepts but clamps; 0 files gives 0 results, not an error
+        self.assertEqual(res["cycles"], [])
+
+    def test_skips_malformed_json(self):
+        with _TempRepo() as r:
+            cycles = r.public / "cycles"
+            cycles.mkdir()
+            (cycles / "good.json").write_text(json.dumps({"handoff_id": "good"}))
+            (cycles / "bad.json").write_text("{ not json")
+            res = chaos.tool_get_cycle_history()
+        ids = [c["handoff_id"] for c in res["cycles"]]
+        self.assertIn("good", ids)
+        self.assertNotIn("bad", ids)
+
+
 class BuildInitialMessageTests(unittest.TestCase):
     def test_includes_summary_and_notes(self):
         msg = chaos.build_initial_message(

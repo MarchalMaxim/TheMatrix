@@ -23,6 +23,7 @@ def _start_server(tmp_root: Path):
         mock.patch.object(storage, "RUNS_PATH", tmp_root / "data" / "runs.json"),
         mock.patch.object(storage, "SALT_PATH", tmp_root / "data" / "salt.json"),
         mock.patch.object(storage, "CURRENT_CYCLE_PATH", tmp_root / "data" / "current_cycle.json"),
+        mock.patch.object(storage, "PUBLIC_DIR", tmp_root / "public"),
         mock.patch.object(storage, "GENERATED_DIR", tmp_root / "public" / "generated"),
         mock.patch.object(storage, "LAST_GOOD_DIR", tmp_root / "public" / "generated" / ".last_good"),
     ]
@@ -297,6 +298,75 @@ class LogsPageTests(unittest.TestCase):
         server.poll_runs_once()
         runs = storage.read_json(storage.RUNS_PATH, default=[])
         self.assertEqual(runs[0]["status"], "applied")
+
+
+class CycleHistoryEndpointTests(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.TemporaryDirectory()
+        self.url, self.stop = _start_server(Path(self.tmp.name))
+        self.addCleanup(self.tmp.cleanup)
+        self.addCleanup(self.stop)
+
+    def _write_cycle(self, handoff_id: str, summary: str, notes: list,
+                    agent_summary: str = ""):
+        # Server reads from storage.PUBLIC_DIR / "cycles"
+        cycles_dir = storage.PUBLIC_DIR / "cycles"
+        cycles_dir.mkdir(parents=True, exist_ok=True)
+        (cycles_dir / f"{handoff_id}.json").write_text(json.dumps({
+            "handoff_id": handoff_id,
+            "summary": summary,
+            "agent_summary": agent_summary,
+            "notes": notes,
+            "files_written": ["public/styles.css"],
+        }))
+
+    def test_previous_returns_empty_when_no_cycles(self):
+        with urllib.request.urlopen(f"{self.url}/api/cycles/previous") as r:
+            data = json.loads(r.read())
+        self.assertEqual(data, {})
+
+    def test_previous_returns_latest_sanitised(self):
+        import time as _time, os as _os
+        self._write_cycle("old", "old cycle", [{"text": "old"}])
+        cycles_dir = storage.PUBLIC_DIR / "cycles"
+        _os.utime(cycles_dir / "old.json",
+                  (_time.time() - 3600, _time.time() - 3600))
+        # Note with hashes — server must strip them
+        self._write_cycle("new", "new cycle summary",
+                          [{"text": "newest", "votes": 3,
+                            "submitter_hash": "SECRET",
+                            "voter_hashes": ["SECRET"],
+                            "author_label": "misty fox"}],
+                          agent_summary="made it blue")
+
+        with urllib.request.urlopen(f"{self.url}/api/cycles/previous") as r:
+            data = json.loads(r.read())
+        self.assertEqual(data["handoff_id"], "new")
+        self.assertEqual(data["summary"], "new cycle summary")
+        self.assertEqual(data["agent_summary"], "made it blue")
+        self.assertEqual(len(data["notes"]), 1)
+        note = data["notes"][0]
+        self.assertEqual(note["text"], "newest")
+        self.assertEqual(note["votes"], 3)
+        self.assertEqual(note["author_label"], "misty fox")
+        self.assertNotIn("submitter_hash", note)
+        self.assertNotIn("voter_hashes", note)
+
+    def test_recent_returns_list(self):
+        self._write_cycle("a", "a", [])
+        self._write_cycle("b", "b", [])
+        with urllib.request.urlopen(f"{self.url}/api/cycles/recent?limit=2") as r:
+            data = json.loads(r.read())
+        self.assertEqual(len(data["cycles"]), 2)
+        self.assertEqual({c["handoff_id"] for c in data["cycles"]}, {"a", "b"})
+
+    def test_recent_respects_limit(self):
+        for i in range(5):
+            self._write_cycle(f"c{i}", f"cycle {i}", [])
+        with urllib.request.urlopen(f"{self.url}/api/cycles/recent?limit=2") as r:
+            data = json.loads(r.read())
+        self.assertEqual(len(data["cycles"]), 2)
 
 
 class AdminEndpointTests(unittest.TestCase):

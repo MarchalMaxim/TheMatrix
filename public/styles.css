@@ -646,3 +646,30 @@ button:disabled {
   opacity: 1;
   transform: translateX(-50%) translateY(-15px);
 }
+
+/* ==========================================================================
+   INVARIANT — #previous-cycle section. The chaos agent MUST keep this
+   section in index.html and may restyle but not remove it. Default
+   styling below is subtle so the agent's theme still dominates.
+   ========================================================================== */
+#previous-cycle {
+  max-width: 640px;
+  margin: 2rem auto;
+  padding: 1rem 1.2rem;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  opacity: 0.85;
+  font-size: 0.92rem;
+}
+#previous-cycle h2 { margin: 0 0 0.5rem; font-size: 1rem; opacity: 0.8; }
+#prev-cycle-summary { margin: 0 0 0.5rem; font-style: italic; line-height: 1.45; }
+#prev-cycle-details { margin-top: 0.5rem; }
+#prev-cycle-details summary { cursor: pointer; opacity: 0.75; user-select: none; }
+#prev-cycle-notes-list { list-style: none; padding-left: 0; margin: 0.5rem 0 0; }
+#prev-cycle-notes-list li {
+  margin: 0.35rem 0;
+  padding: 0.3rem 0.5rem;
+  border-left: 2px solid currentColor;
+  font-size: 0.88rem;
+}
+#prev-cycle-notes-list li .votes { opacity: 0.5; font-size: 0.8rem; margin-right: 0.3rem; }

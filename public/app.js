@@ -286,8 +286,55 @@ newNoteBtn.addEventListener("click", createNewNote);
 // Seed cycle_id before first status poll so a cycle already in progress
 // doesn't trigger a spurious board flush.
 requestJson("/api/cycle/current").then((c) => { currentCycleId = c.cycle_id || null; }).catch(() => {});
+
+/**
+ * Populate the "previous cycle" preview section. Fetches the most recent cycle
+ * metadata from /api/cycles/previous and renders it into the mandated DOM
+ * anchors: #prev-cycle-summary, #prev-cycle-count, #prev-cycle-notes-list.
+ * The chaos agent is required to keep these IDs; without them this function
+ * silently no-ops.
+ */
+async function loadPreviousCycle() {
+  const section = document.getElementById("previous-cycle");
+  const summaryEl = document.getElementById("prev-cycle-summary");
+  const countEl = document.getElementById("prev-cycle-count");
+  const listEl = document.getElementById("prev-cycle-notes-list");
+  if (!section || !summaryEl || !listEl) return;
+  try {
+    const res = await fetch("/api/cycles/previous");
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data || !data.handoff_id) {
+      // no previous cycle yet — keep hidden
+      return;
+    }
+    const notes = Array.isArray(data.notes) ? data.notes : [];
+    const parts = [];
+    if (data.summary) parts.push(data.summary);
+    if (data.agent_summary) parts.push("→ " + data.agent_summary);
+    summaryEl.textContent = parts.join(" ");
+    if (countEl) countEl.textContent = String(notes.length);
+    listEl.innerHTML = "";
+    notes.forEach((n) => {
+      const li = document.createElement("li");
+      const v = document.createElement("span");
+      v.className = "votes";
+      v.textContent = `(${n.votes || 0})`;
+      const t = document.createElement("span");
+      t.textContent = " " + (n.text || "");
+      li.appendChild(v);
+      li.appendChild(t);
+      listEl.appendChild(li);
+    });
+    section.hidden = false;
+  } catch (_err) {
+    /* silent */
+  }
+}
+
 loadNotes();
 loadHistory();
+loadPreviousCycle();
 updateBigClock();
 updateGenerationCountdown();
 refreshWorkerStatus();

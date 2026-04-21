@@ -38,7 +38,9 @@ class CyclePipelineTests(unittest.TestCase):
         import agent as _agent
         self.server = server
         server.NOTES_PATH = storage.NOTES_PATH
-        server.AGENT = _agent.MockGithubAgent(queued_seconds=0.01, running_seconds=0.01)
+        # Generous tolerances so the close_cycle's disk I/O doesn't race past
+        # the first poll (flaky otherwise on slower machines).
+        server.AGENT = _agent.MockGithubAgent(queued_seconds=0.2, running_seconds=0.2)
         abuse.reset_quota_for_tests()
 
     def test_close_cycle_records_failure_when_kick_off_raises(self):
@@ -120,8 +122,8 @@ class PollerTests(CyclePipelineTests):
         runs = storage.read_json(storage.RUNS_PATH, default=[])
         self.assertEqual(runs[0]["status"], "queued")
 
-        # advance mock past queued+running
-        _time.sleep(0.05)
+        # advance mock past queued+running (sum of both configured windows)
+        _time.sleep(0.5)
         self.server.poll_runs_once()
         runs = storage.read_json(storage.RUNS_PATH, default=[])
         self.assertEqual(runs[0]["status"], "needs_merge")
