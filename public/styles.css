@@ -3,111 +3,122 @@
 }
 
 #site-footer {
-  padding: 1.5rem;
+  padding: 2rem;
   text-align: center;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  opacity: 0.4;
+  background: transparent;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  transition: opacity 0.3s ease;
+}
+#site-footer:hover {
   opacity: 0.8;
-  background: rgba(0,0,0,0.3);
-  border-top: 3px solid #f4d03f;
 }
 #site-footer a {
-  color: #f4d03f;
+  color: rgba(255, 255, 255, 0.5);
   text-decoration: none;
-  border-bottom: 2px dotted #f4d03f;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-weight: 300;
+  letter-spacing: 0.2em;
+  text-transform: lowercase;
+  transition: all 0.3s ease;
 }
 #site-footer a:hover { 
-  opacity: 1;
-  color: #fff5b3;
-  border-bottom-color: #fff5b3;
+  color: rgba(255, 255, 255, 0.9);
+  border-bottom-color: rgba(255, 255, 255, 0.3);
 }
 
-@keyframes bucketFall {
-  0% { 
-    transform: translateY(-100px) rotate(0deg); 
-    opacity: 0; 
-  }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { 
-    transform: translateY(100vh) rotate(360deg); 
-    opacity: 0; 
-  }
-}
-
-@keyframes glitchShake {
-  0%, 100% { transform: translate(0, 0); }
-  10% { transform: translate(-2px, 2px); }
-  20% { transform: translate(2px, -2px); }
-  30% { transform: translate(-2px, -2px); }
-  40% { transform: translate(2px, 2px); }
-  50% { transform: translate(-2px, 2px); }
-  60% { transform: translate(2px, -2px); }
-  70% { transform: translate(-2px, -2px); }
-  80% { transform: translate(2px, 2px); }
-  90% { transform: translate(-2px, -2px); }
-}
-
-@keyframes svgSpin {
-  0% { transform: rotate(0deg) scale(1); }
-  50% { transform: rotate(180deg) scale(1.2); }
-  100% { transform: rotate(360deg) scale(1); }
-}
-
-@keyframes svgFloat {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-30px); }
-}
-
-@keyframes noteDrop {
-  0% { 
-    transform: translateY(-200px) rotate(-45deg) scale(0); 
-    opacity: 0; 
-  }
-  60% { 
-    transform: translateY(0) rotate(5deg) scale(1.1); 
-    opacity: 1; 
-  }
-  80% { 
-    transform: translateY(-10px) rotate(-2deg) scale(0.95); 
-  }
-  100% { 
-    transform: translateY(0) rotate(0) scale(1); 
-    opacity: 1; 
-  }
-}
-
-@keyframes bucketPulse {
+@keyframes voidFloat {
   0%, 100% { 
-    box-shadow: 0 0 20px rgba(244, 208, 63, 0.6),
-                inset 0 0 30px rgba(244, 208, 63, 0.2);
+    transform: translate(0, 0) scale(1); 
+    opacity: 0.1; 
   }
   50% { 
-    box-shadow: 0 0 40px rgba(244, 208, 63, 0.9),
-                inset 0 0 50px rgba(244, 208, 63, 0.4);
+    transform: translate(var(--tx), var(--ty)) scale(1.5); 
+    opacity: 0.3; 
+  }
+}
+
+@keyframes whisperFade {
+  0% { 
+    opacity: 0; 
+    transform: translateY(100px) scale(0.5) rotate(0deg);
+  }
+  50% { 
+    opacity: 0.15;
+    transform: translateY(0) scale(1) rotate(180deg);
+  }
+  100% { 
+    opacity: 0;
+    transform: translateY(-100px) scale(0.5) rotate(360deg);
+  }
+}
+
+@keyframes noteMaterialize {
+  0% { 
+    opacity: 0;
+    transform: scale(0) rotate(180deg);
+    filter: blur(20px);
+  }
+  60% { 
+    opacity: 1;
+    transform: scale(1.1) rotate(-5deg);
+    filter: blur(0px);
+  }
+  100% { 
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+    filter: blur(0px);
+  }
+}
+
+@keyframes voidPulse {
+  0%, 100% { 
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.05),
+                inset 0 0 20px rgba(255, 255, 255, 0.02);
+  }
+  50% { 
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.1),
+                inset 0 0 40px rgba(255, 255, 255, 0.05);
+  }
+}
+
+@keyframes breathe {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% { 
+    transform: scale(1.02);
+    opacity: 1;
   }
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: "Courier New", monospace;
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
-  background-size: 400% 400%;
-  animation: gradientShift 15s ease infinite;
-  color: #f4d03f;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  background: #0a0a0a;
+  color: rgba(255, 255, 255, 0.7);
   overflow-x: hidden;
   position: relative;
+  font-weight: 300;
+  letter-spacing: 0.05em;
 }
 
-@keyframes gradientShift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, rgba(20, 20, 20, 0.8) 0%, rgba(0, 0, 0, 1) 100%);
+  pointer-events: none;
+  z-index: 0;
 }
 
-.bucket-rain {
+.void-particles {
   position: fixed;
   top: 0;
   left: 0;
@@ -118,14 +129,16 @@ body {
   overflow: hidden;
 }
 
-.bucket {
+.void-particle {
   position: absolute;
-  font-size: 48px;
-  animation: bucketFall linear infinite;
-  filter: drop-shadow(0 0 10px rgba(244, 208, 63, 0.6));
+  width: 2px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  animation: voidFloat linear infinite;
 }
 
-.svg-chaos-layer {
+.whisper-layer {
   position: fixed;
   top: 0;
   left: 0;
@@ -136,176 +149,156 @@ body {
   overflow: hidden;
 }
 
-.chaos-svg {
+.whisper {
   position: absolute;
-  width: 80px;
-  height: 80px;
-  opacity: 0.3;
-  mix-blend-mode: screen;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.1);
+  font-family: 'Courier New', monospace;
+  white-space: nowrap;
+  animation: whisperFade 20s ease-in-out infinite;
+  font-weight: 200;
+  letter-spacing: 0.3em;
 }
 
 header {
-  padding: 2rem 1.5rem 1.5rem;
-  background: rgba(0, 0, 0, 0.8);
-  border-bottom: 4px solid #f4d03f;
-  backdrop-filter: blur(10px);
+  padding: 3rem 2rem 2rem;
+  background: transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
   position: relative;
   z-index: 10;
+  animation: breathe 8s ease-in-out infinite;
 }
 
 h1 {
   margin: 0;
-  font-size: clamp(2rem, 6vw, 4rem);
-  font-weight: 900;
-  color: #f4d03f;
-  letter-spacing: 0.05em;
+  font-size: clamp(1.5rem, 5vw, 3rem);
+  font-weight: 100;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.3em;
   text-align: center;
-  text-transform: uppercase;
+  text-transform: lowercase;
   position: relative;
 }
 
-.glitch-text {
-  animation: glitchShake 0.5s infinite;
+.void-title {
   text-shadow: 
-    2px 2px 0 #ff0000,
-    -2px -2px 0 #00ff00,
-    0 0 20px #f4d03f;
-}
-
-.glitch-text::before {
-  content: attr(data-text);
-  position: absolute;
-  left: -2px;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  color: #ff0000;
-  opacity: 0.8;
-  z-index: -1;
-  animation: glitchShake 0.3s infinite reverse;
-}
-
-.glitch-text::after {
-  content: attr(data-text);
-  position: absolute;
-  left: 2px;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  color: #00ff00;
-  opacity: 0.8;
-  z-index: -1;
-  animation: glitchShake 0.4s infinite;
+    0 0 20px rgba(255, 255, 255, 0.2),
+    0 0 40px rgba(255, 255, 255, 0.1);
 }
 
 .subtitle {
-  margin: 1rem 0 0;
-  font-size: clamp(0.9rem, 2vw, 1.2rem);
-  color: #fff5b3;
+  margin: 1.5rem 0 0;
+  font-size: clamp(0.8rem, 1.5vw, 1rem);
+  color: rgba(255, 255, 255, 0.4);
   text-align: center;
-  font-weight: 400;
-  letter-spacing: 0.08em;
+  font-weight: 200;
+  letter-spacing: 0.2em;
   text-transform: lowercase;
 }
 
 #generation-attraction {
-  margin: 1.5rem auto 0.8rem;
-  padding: 1.5rem 1.5rem;
-  background: rgba(244, 208, 63, 0.1);
-  border: 3px solid #f4d03f;
+  margin: 2.5rem auto 1rem;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 0;
-  max-width: 600px;
+  max-width: 500px;
   text-align: center;
-  animation: bucketPulse 2s ease-in-out infinite;
+  animation: voidPulse 4s ease-in-out infinite;
 }
 
 .attraction-label {
   margin: 0;
-  font-weight: 900;
-  color: #f4d03f;
-  font-size: 1rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
+  font-weight: 200;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.8rem;
+  letter-spacing: 0.3em;
+  text-transform: lowercase;
 }
 
 .countdown {
-  margin: 0.5rem 0 0;
-  font-size: clamp(3rem, 10vw, 5rem);
+  margin: 1rem 0 0;
+  font-size: clamp(2rem, 8vw, 4rem);
   line-height: 1;
-  font-weight: 900;
-  color: #fff5b3;
-  font-family: "Courier New", monospace;
-  letter-spacing: 0.1em;
-  text-shadow: 0 0 20px rgba(244, 208, 63, 0.8);
+  font-weight: 100;
+  color: rgba(255, 255, 255, 0.9);
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
 }
 
 .clock-container {
   position: relative;
   display: inline-block;
-  margin-top: 0.5rem;
+  margin-top: 1rem;
 }
 
 .big-clock {
   margin: 0;
-  font-size: clamp(1.5rem, 5vw, 2.5rem);
-  font-weight: 700;
-  color: #f4d03f;
-  font-family: "Courier New", monospace;
+  font-size: clamp(1rem, 3vw, 1.5rem);
+  font-weight: 200;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: 'Courier New', monospace;
   position: relative;
   z-index: 1;
+  letter-spacing: 0.1em;
 }
 
 .last-summary {
-  margin: 1rem 0 0;
-  font-size: 1rem;
-  color: #fff5b3;
+  margin: 1.5rem 0 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.4);
   font-style: italic;
-  line-height: 1.6;
+  line-height: 1.8;
   letter-spacing: 0.05em;
+  font-weight: 200;
 }
 
 .button-row {
   display: flex;
   justify-content: center;
   gap: 1rem;
-  margin-top: 1.5rem;
+  margin-top: 2rem;
   flex-wrap: wrap;
 }
 
 button {
-  border: 3px solid #f4d03f;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 0;
-  background: rgba(244, 208, 63, 0.2);
-  color: #f4d03f;
+  background: rgba(255, 255, 255, 0.02);
+  color: rgba(255, 255, 255, 0.7);
   padding: 1rem 2rem;
-  font-weight: 900;
+  font-weight: 200;
   cursor: pointer;
-  font-size: 1rem;
-  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-family: "Courier New", monospace;
-  box-shadow: 0 0 20px rgba(244, 208, 63, 0.3);
+  gap: 0.8rem;
+  letter-spacing: 0.2em;
+  text-transform: lowercase;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
 }
 
 button:hover:not(:disabled) {
-  background: #f4d03f;
-  color: #000;
-  box-shadow: 0 0 40px rgba(244, 208, 63, 0.8);
-  transform: scale(1.05);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 button:disabled {
-  opacity: 0.4;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
 .btn-primary .btn-icon {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   line-height: 1;
+  opacity: 0.6;
 }
 
 #canvas {
@@ -317,31 +310,33 @@ button:disabled {
 
 .note {
   position: absolute;
-  width: 220px;
-  height: 220px;
-  background: linear-gradient(135deg, #f4d03f 0%, #fff5b3 100%);
-  border: 4px solid #000;
+  width: 200px;
+  height: 200px;
+  background: linear-gradient(135deg, rgba(30, 30, 30, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0;
   box-shadow: 
-    8px 8px 0 rgba(0, 0, 0, 0.4),
-    0 0 30px rgba(244, 208, 63, 0.5);
+    0 10px 40px rgba(0, 0, 0, 0.5),
+    inset 0 0 20px rgba(255, 255, 255, 0.02);
   padding: 1.5rem;
   cursor: grab;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   transform: rotate(0deg);
+  backdrop-filter: blur(10px);
 }
 
 .note:hover {
-  transform: scale(1.08) rotate(-2deg);
+  transform: scale(1.05) rotate(-1deg);
   box-shadow: 
-    12px 12px 0 rgba(0, 0, 0, 0.4),
-    0 0 50px rgba(244, 208, 63, 0.8);
+    0 15px 60px rgba(0, 0, 0, 0.7),
+    inset 0 0 30px rgba(255, 255, 255, 0.05);
   z-index: 100;
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .note:active {
@@ -350,15 +345,15 @@ button:disabled {
 
 .note-grip {
   position: absolute;
-  top: 0.5rem;
-  left: 0.5rem;
-  font-size: 1.5rem;
-  color: rgba(0, 0, 0, 0.3);
+  top: 0.8rem;
+  left: 0.8rem;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.2);
   cursor: grab;
   user-select: none;
   pointer-events: none;
   z-index: 1;
-  font-weight: 900;
+  font-weight: 100;
 }
 
 .note textarea {
@@ -367,25 +362,26 @@ button:disabled {
   border: 0;
   resize: none;
   background: transparent;
-  font-family: "Courier New", monospace;
-  font-size: 1rem;
-  color: #000;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.8);
   text-align: center;
   cursor: text;
   position: relative;
   z-index: 2;
-  line-height: 1.5;
-  font-weight: 600;
+  line-height: 1.6;
+  font-weight: 200;
+  letter-spacing: 0.05em;
 }
 
 .note textarea::placeholder {
-  color: rgba(0, 0, 0, 0.4);
+  color: rgba(255, 255, 255, 0.2);
   font-style: italic;
 }
 
 .note textarea:focus {
   outline: none;
-  color: #1a1a1a;
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .note-author {
@@ -393,77 +389,76 @@ button:disabled {
   bottom: 0.8rem;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-style: italic;
-  color: rgba(0, 0, 0, 0.6);
+  color: rgba(255, 255, 255, 0.3);
   text-align: center;
   user-select: none;
   z-index: 2;
   white-space: nowrap;
-  font-weight: 700;
+  font-weight: 200;
+  letter-spacing: 0.1em;
 }
 
 .note-delete {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  width: 2.5rem;
-  height: 2.5rem;
+  top: 0.8rem;
+  right: 0.8rem;
+  width: 2rem;
+  height: 2rem;
   padding: 0;
-  font-size: 1.2rem;
-  line-height: 2.5rem;
+  font-size: 1rem;
+  line-height: 2rem;
   text-align: center;
-  background: #ff0000;
-  color: #fff;
-  border: 3px solid #000;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0;
   cursor: pointer;
   display: none;
-  font-weight: 900;
+  font-weight: 100;
   z-index: 3;
   transition: all 0.2s ease;
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
 }
 
 .note-delete:hover {
-  background: #ff3333;
-  color: #fff;
-  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.4);
-  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .note textarea[readonly] {
   cursor: default;
-  opacity: 0.9;
+  opacity: 0.7;
 }
 
 .note.just-added {
-  animation: noteDrop 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  outline: 4px solid #f4d03f;
-  outline-offset: 8px;
+  animation: noteMaterialize 1s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  outline: 1px solid rgba(255, 255, 255, 0.3);
+  outline-offset: 10px;
 }
 
 #history {
-  padding: 3rem 1.5rem 4rem;
-  background: rgba(0, 0, 0, 0.8);
-  border-top: 4px solid #f4d03f;
-  backdrop-filter: blur(10px);
+  padding: 3rem 2rem 4rem;
+  background: transparent;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
 }
 
 .history-title {
-  margin: 0 0 2rem;
-  font-size: 1.8rem;
-  color: #f4d03f;
+  margin: 0 0 2.5rem;
+  font-size: 1.5rem;
+  color: rgba(255, 255, 255, 0.6);
   text-align: center;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  font-weight: 900;
+  letter-spacing: 0.3em;
+  text-transform: lowercase;
+  font-weight: 100;
 }
 
 .history-icon {
-  color: #fff5b3;
-  margin: 0 1rem;
-  font-size: 2rem;
+  color: rgba(255, 255, 255, 0.3);
+  margin: 0 1.5rem;
+  font-size: 1rem;
 }
 
 #history-list {
@@ -472,59 +467,61 @@ button:disabled {
   list-style: none;
   display: grid;
   gap: 1rem;
-  max-width: 900px;
+  max-width: 800px;
 }
 
 #history-list li {
-  padding: 1.2rem 1.5rem;
-  background: rgba(244, 208, 63, 0.1);
-  border-left: 6px solid #f4d03f;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.01);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0;
-  font-size: 1rem;
-  line-height: 1.6;
-  transition: all 0.2s ease;
-  box-shadow: 0 0 10px rgba(244, 208, 63, 0.2);
+  font-size: 0.9rem;
+  line-height: 1.8;
+  transition: all 0.3s ease;
 }
 
 #history-list li:hover {
-  background: rgba(244, 208, 63, 0.2);
-  border-left-width: 10px;
-  transform: translateX(10px);
-  box-shadow: 0 0 20px rgba(244, 208, 63, 0.4);
+  background: rgba(255, 255, 255, 0.02);
+  border-left-width: 2px;
+  transform: translateX(5px);
+  border-left-color: rgba(255, 255, 255, 0.2);
 }
 
 #history-list .history-empty {
-  border-left-color: #666;
-  color: #999;
+  border-left-color: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.3);
   font-style: italic;
   text-align: center;
+  font-weight: 200;
 }
 
 #history-list .history-sha {
   display: inline-block;
-  font-family: "Courier New", monospace;
-  font-size: 0.8rem;
-  color: #f4d03f;
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
   margin-right: 1rem;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(255, 255, 255, 0.02);
   padding: 0.3rem 0.6rem;
   border-radius: 0;
-  border: 2px solid #f4d03f;
-  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-weight: 300;
+  letter-spacing: 0.05em;
 }
 
 .history-title-text {
-  color: #fff5b3;
-  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 200;
 }
 
 #history-list .history-date {
   display: inline-block;
-  font-size: 0.8rem;
-  color: #f4d03f;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
   margin-left: 1rem;
-  font-family: "Courier New", monospace;
+  font-family: 'Courier New', monospace;
   opacity: 0.7;
+  letter-spacing: 0.05em;
 }
 
 #history-list a {
@@ -534,8 +531,7 @@ button:disabled {
 }
 
 #history-list a:hover .history-title-text {
-  color: #f4d03f;
-  text-decoration: underline;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .toast {
@@ -543,23 +539,22 @@ button:disabled {
   left: 50%;
   bottom: 3rem;
   transform: translateX(-50%);
-  background: #f4d03f;
-  border: 4px solid #000;
-  color: #000;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
   padding: 1rem 2rem;
   border-radius: 0;
-  font-size: 1rem;
-  box-shadow: 
-    8px 8px 0 rgba(0, 0, 0, 0.4),
-    0 0 30px rgba(244, 208, 63, 0.6);
+  font-size: 0.85rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(20px);
   opacity: 0;
   pointer-events: none;
   transition: all 0.3s ease;
   z-index: 1000;
-  font-family: "Courier New", monospace;
-  letter-spacing: 0.05em;
-  font-weight: 700;
-  text-transform: uppercase;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  letter-spacing: 0.15em;
+  font-weight: 200;
+  text-transform: lowercase;
 }
 
 .toast.show {
