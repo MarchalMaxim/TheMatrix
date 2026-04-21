@@ -1,74 +1,130 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>المصفوفة • TheMatrix</title>
+    <title>TheMatrix • Dual Personality</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="arabic-calligraphy" id="arabic-calligraphy" aria-hidden="true"></div>
-    
-    <header>
-      <h1 class="arabic-title">المصفوفة</h1>
-      <p class="subtitle">حيث تذوب الأفكار في اللانهاية</p>
-      
-      <section id="generation-attraction" aria-live="polite">
-        <p class="attraction-label">⟡ الانهيار القادم في</p>
-        <p id="generation-countdown" class="countdown">4:00:00</p>
-        <div class="clock-container">
-          <p id="big-clock" class="big-clock">--:--:--</p>
-        </div>
-        <p id="last-summary" class="last-summary">نستمع إلى الصمت بين الأفكار...</p>
-      </section>
-      
-      <div class="button-row">
-        <button id="new-note-btn" type="button" class="btn-primary">
-          <span class="btn-icon">⟡</span>
-          <span class="btn-text">همس في الفراغ</span>
-        </button>
-      </div>
-    </header>
-    
-    <main id="canvas" aria-label="لوحة الملاحظات">
-    </main>
-    
-    <section id="history" aria-label="تاريخ تطور الموقع">
-      <h2 class="history-title">
-        <span class="history-icon">◈</span>
-        شظايا الذاكرة
-        <span class="history-icon">◈</span>
-      </h2>
-      <ol id="history-list">
-        <li class="history-empty">لا شيء موجود بعد في هذا الفراغ...</li>
-      </ol>
-    </section>
+    <!-- SPLIT SCREEN WRAPPER -->
+    <div class="split-container">
+      <!-- LEFT SIDE: BUSINESS & FORMAL -->
+      <div class="left-side">
+        <header class="business-header">
+          <h1 class="business-title">THE MATRIX</h1>
+          <p class="business-subtitle">Enterprise Ideation Platform</p>
+          
+          <section id="generation-attraction" class="business-section">
+            <p class="attraction-label">NEXT SYSTEM RECALIBRATION</p>
+            <p id="generation-countdown" class="countdown">4:00:00</p>
+            <div class="clock-container">
+              <p id="big-clock" class="big-clock">--:--:--</p>
+            </div>
+            <p id="last-summary" class="last-summary">Awaiting briefing from operations...</p>
+          </section>
+          
+          <div class="button-row">
+            <button id="new-note-btn" type="button" class="btn-primary business-btn">
+              <span class="btn-icon">+</span>
+              <span class="btn-text">NEW POST-IT</span>
+            </button>
+          </div>
 
-    <section id="previous-cycle" data-invariant="previous-cycle" hidden>
-      <h2>⟡ آخر استدعاء — Previous invocation</h2>
-      <p id="prev-cycle-summary"></p>
-      <details id="prev-cycle-details">
-        <summary>
-          <span id="prev-cycle-count">0</span>
-          <span> post-its that fed this cycle</span>
-        </summary>
-        <ul id="prev-cycle-notes-list"></ul>
-      </details>
-    </section>
-    
+          <!-- BRIGHT COLOR DIVS AS REQUESTED -->
+          <div class="bright-divs-container">
+            <div class="bright-div bright-red"></div>
+            <div class="bright-div bright-orange"></div>
+            <div class="bright-div bright-yellow"></div>
+          </div>
+        </header>
+
+        <main id="canvas" class="business-canvas" aria-label="Notes canvas">
+        </main>
+
+        <section id="history" class="business-history">
+          <h2 class="history-title">REVISION HISTORY</h2>
+          <ol id="history-list">
+            <li class="history-empty">No cycle commits yet.</li>
+          </ol>
+        </section>
+
+        <section id="previous-cycle" data-invariant="previous-cycle" hidden>
+          <h2>◆ PREVIOUS OPERATIONAL CYCLE</h2>
+          <p id="prev-cycle-summary"></p>
+          <details id="prev-cycle-details">
+            <summary>
+              <span id="prev-cycle-count">0</span>
+              <span> archived post-its</span>
+            </summary>
+            <ul id="prev-cycle-notes-list"></ul>
+          </details>
+        </section>
+      </div>
+
+      <!-- RIGHT SIDE: FESTIVE & COLORFUL -->
+      <div class="right-side">
+        <header class="festive-header">
+          <h1 class="festive-title">✨ THE MATRIX ✨</h1>
+          <p class="festive-subtitle">🎉 Where Ideas SPARKLE! 🎊</p>
+          
+          <div class="festive-decorations">
+            <div class="confetti"></div>
+            <div class="confetti"></div>
+            <div class="confetti"></div>
+            <div class="confetti"></div>
+            <div class="confetti"></div>
+            <div class="confetti"></div>
+          </div>
+
+          <section class="festive-section">
+            <p class="festive-label">✨ NEXT MAGICAL TRANSFORMATION ✨</p>
+            <p class="festive-countdown">🎪 Party Mode 🎪</p>
+            <div class="festive-features">
+              <div class="feature-badge">🌟 Creative</div>
+              <div class="feature-badge">💡 Inspired</div>
+              <div class="feature-badge">🎨 Colorful</div>
+            </div>
+          </section>
+
+          <!-- MORE BRIGHT COLOR DIVS -->
+          <div class="bright-divs-container festive-divs">
+            <div class="bright-div bright-pink"></div>
+            <div class="bright-div bright-cyan"></div>
+            <div class="bright-div bright-lime"></div>
+            <div class="bright-div bright-magenta"></div>
+          </div>
+
+          <div class="navigation-panel">
+            <a href="/gallery.html" class="festive-link">🎨 RANDOM SVG ART GALLERY 🎨</a>
+            <a href="/logs" id="logs-link" class="festive-link">📊 System Logs</a>
+          </div>
+
+          <div class="party-zone">
+            <div class="spinning-star">⭐</div>
+            <div class="spinning-star">🌟</div>
+            <div class="spinning-star">✨</div>
+            <div class="party-text">POST YOUR IDEAS!</div>
+          </div>
+        </header>
+      </div>
+    </div>
+
+    <!-- SHARED FOOTER (OUTSIDE SPLIT) -->
     <footer id="site-footer">
-      <a href="/logs" id="logs-link" rel="nofollow">⟡ بوابة المشغل</a>
+      <a href="/logs" class="footer-logs-link">View System Logs</a>
     </footer>
-    
+
     <template id="note-template">
       <article class="note" draggable="true">
-        <div class="note-grip" aria-hidden="true">⟡</div>
-        <button class="note-delete" title="حذف هذه الملاحظة" aria-label="حذف">×</button>
-        <textarea maxlength="500" aria-label="محتوى الملاحظة" placeholder="همسك..."></textarea>
-        <div class="note-author" aria-label="المؤلف"></div>
+        <div class="note-grip" aria-hidden="true">⋮⋮</div>
+        <button class="note-delete" title="Delete this note" aria-label="Delete">×</button>
+        <textarea maxlength="500" aria-label="Note content" placeholder="Your idea..."></textarea>
+        <div class="note-author" aria-label="Author"></div>
       </article>
     </template>
     
     <script src="/app.js"></script>
+    <script src="/hover-effects.js"></script>
   </body>
 </html>
