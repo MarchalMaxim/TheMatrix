@@ -3,133 +3,136 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>💎 THE MATRIX 💎 Drop Ya Sticky Notes</title>
+    <title>🕹️ THE MATRIX 🕹️ Arcade Memory Wall</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="bling-overlay"></div>
-    <canvas id="vinyl-canvas"></canvas>
+    <div class="crt-overlay"></div>
+    <div class="scanlines"></div>
+    <canvas id="grid-bg"></canvas>
     
     <div class="container">
-      <header class="rap-header">
-        <div class="gold-bar"></div>
+      <header class="arcade-header">
+        <div class="neon-border-top"></div>
         
-        <div class="logo-block">
-          <svg viewBox="0 0 200 200" class="bling-logo">
+        <div class="logo-zone">
+          <svg viewBox="0 0 400 160" class="neon-logo">
             <defs>
-              <linearGradient id="gold-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
-                <stop offset="50%" style="stop-color:#FFA500;stop-opacity:1" />
-                <stop offset="100%" style="stop-color:#FFD700;stop-opacity:1" />
+              <linearGradient id="neon-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#ff00ff;stop-opacity:1" />
+                <stop offset="50%" style="stop-color:#00ffff;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#ff00ff;stop-opacity:1" />
               </linearGradient>
-              <filter id="shine">
-                <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
-                <feOffset dx="2" dy="2" result="offsetblur"/>
-                <feComponentTransfer>
-                  <feFuncA type="linear" slope="0.5"/>
-                </feComponentTransfer>
-                <feMerge> 
-                  <feMergeNode/>
-                  <feMergeNode in="SourceGraphic"/> 
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
                 </feMerge>
               </filter>
             </defs>
-            <text x="100" y="80" font-size="70" font-weight="900" fill="url(#gold-gradient)" 
-                  text-anchor="middle" font-family="Impact, sans-serif" filter="url(#shine)">THE</text>
-            <text x="100" y="140" font-size="90" font-weight="900" fill="url(#gold-gradient)" 
-                  text-anchor="middle" font-family="Impact, sans-serif" filter="url(#shine)">MATRIX</text>
-            <circle cx="30" cy="30" r="15" fill="url(#gold-gradient)" filter="url(#shine)" class="bling-dot"/>
-            <circle cx="170" cy="30" r="15" fill="url(#gold-gradient)" filter="url(#shine)" class="bling-dot"/>
-            <circle cx="30" cy="170" r="15" fill="url(#gold-gradient)" filter="url(#shine)" class="bling-dot"/>
-            <circle cx="170" cy="170" r="15" fill="url(#gold-gradient)" filter="url(#shine)" class="bling-dot"/>
+            <text x="200" y="60" font-size="50" font-weight="900" fill="url(#neon-grad)" 
+                  text-anchor="middle" font-family="Arial Black, sans-serif" filter="url(#glow)" 
+                  letter-spacing="0.1em">THE MATRIX</text>
+            <text x="200" y="100" font-size="24" font-weight="700" fill="#00ffff" 
+                  text-anchor="middle" font-family="Arial, sans-serif" filter="url(#glow)"
+                  letter-spacing="0.2em">ARCADE MEMORY WALL</text>
+            <rect x="10" y="10" width="380" height="140" fill="none" stroke="url(#neon-grad)" 
+                  stroke-width="3" filter="url(#glow)" rx="8"/>
+            <circle cx="30" cy="30" r="8" fill="#ff00ff" filter="url(#glow)"/>
+            <circle cx="370" cy="30" r="8" fill="#00ffff" filter="url(#glow)"/>
+            <circle cx="30" cy="130" r="8" fill="#00ff00" filter="url(#glow)"/>
+            <circle cx="370" cy="130" r="8" fill="#ff00ff" filter="url(#glow)"/>
           </svg>
           
           <h1 class="main-title">
-            <span class="title-line-1">💎 THE MATRIX 💎</span>
-            <span class="title-line-2">DROP YA STICKY NOTES</span>
+            <span class="title-arcade">🕹️ THE MATRIX 🕹️</span>
+            <span class="title-sub">ARCADE MEMORY WALL</span>
           </h1>
           
           <p class="tagline">
-            <span class="tag-icon">🎤</span>
-            <span class="tag-text">Post It · Vote It · Keep It Real</span>
-            <span class="tag-icon">🎤</span>
+            <span class="tag-glyph">◄</span>
+            <span class="tag-text">INSERT COIN · POST NOTE · HIGH SCORE</span>
+            <span class="tag-glyph">►</span>
           </p>
         </div>
         
-        <nav class="dope-nav">
-          <a href="/beats.html" class="nav-link">
-            <span class="link-icon">🎵</span>
-            <span>DROP BEATS</span>
+        <nav class="arcade-nav">
+          <a href="/arcade.html" class="nav-btn">
+            <span class="btn-icon">🎮</span>
+            <span>GAMES</span>
           </a>
-          <a href="/freestyle.html" class="nav-link">
-            <span class="link-icon">🔥</span>
-            <span>FREESTYLE GEN</span>
+          <a href="/visualizer.html" class="nav-btn">
+            <span class="btn-icon">🌊</span>
+            <span>SYNTHWAVE</span>
           </a>
-          <a href="/hall-of-fame.html" class="nav-link">
-            <span class="link-icon">👑</span>
-            <span>HALL OF FAME</span>
+          <a href="/leaderboard.html" class="nav-btn">
+            <span class="btn-icon">🏆</span>
+            <span>SCORES</span>
           </a>
         </nav>
         
-        <div class="gold-bar"></div>
+        <div class="neon-border-bottom"></div>
       </header>
 
       <main class="main-stage">
         <section class="info-panel">
           <div class="panel-header">
             <span class="header-icon">⏰</span>
-            <h2>WHAT TIME IS IT THO</h2>
+            <h2>SYSTEM TIME</h2>
             <span class="header-icon">⏰</span>
           </div>
           
-          <div class="time-grid">
-            <div class="time-box">
-              <div class="time-label">RIGHT NOW</div>
-              <div class="time-display" id="big-clock">00:00:00</div>
+          <div class="status-grid">
+            <div class="status-item">
+              <div class="status-label">CURRENT TIME</div>
+              <div class="status-display" id="big-clock">00:00:00</div>
             </div>
-            <div class="time-divider">💎</div>
-            <div class="time-box">
-              <div class="time-label">NEXT DROP</div>
-              <div class="time-display countdown" id="generation-countdown">4:00:00</div>
+            <div class="status-divider">
+              <div class="divider-dot"></div>
+            </div>
+            <div class="status-item">
+              <div class="status-label">NEXT CYCLE</div>
+              <div class="status-display countdown" id="generation-countdown">4:00:00</div>
             </div>
           </div>
           
           <div class="status-box">
-            <div class="status-header">🎤 LAST TRANSMISSION:</div>
-            <div class="status-content" id="last-summary">Waiting for the beat to drop...</div>
+            <div class="status-header">► LAST TRANSMISSION:</div>
+            <div class="status-content" id="last-summary">Loading system data...</div>
           </div>
         </section>
 
         <section class="info-panel">
           <div class="panel-header">
             <span class="header-icon">📝</span>
-            <h2>DROP A NOTE</h2>
+            <h2>POST YOUR MESSAGE</h2>
             <span class="header-icon">📝</span>
           </div>
           
-          <div class="drop-zone">
-            <button id="new-note-btn" type="button" class="drop-button">
-              <span class="btn-bracket">[</span>
-              <span class="btn-text">🎤 POST YA THOUGHTS 🎤</span>
-              <span class="btn-bracket">]</span>
+          <div class="action-zone">
+            <button id="new-note-btn" type="button" class="arcade-button">
+              <span class="btn-bracket">►</span>
+              <span class="btn-text">INSERT NOTE</span>
+              <span class="btn-bracket">◄</span>
             </button>
             
             <div class="instructions">
-              <p>✨ Drag notes around the wall, keep it fresh</p>
-              <p>✨ Click to edit your own bars</p>
-              <p>✨ Real talk only, no cap</p>
+              <p>► Drag notes anywhere on the grid</p>
+              <p>► Click to edit your messages</p>
+              <p>► Vote for the best posts</p>
             </div>
           </div>
         </section>
 
-        <section id="canvas" class="sticky-wall" aria-label="Note board">
-          <div class="graffiti-bg"></div>
+        <section id="canvas" class="memory-wall" aria-label="Note board">
+          <div class="grid-pattern"></div>
         </section>
 
         <section id="previous-cycle" data-invariant="previous-cycle" class="info-panel" hidden>
           <div class="panel-header">
             <span class="header-icon">⏮️</span>
-            <h2>LAST CYCLE VIBES</h2>
+            <h2>PREVIOUS CYCLE</h2>
             <span class="header-icon">⏮️</span>
           </div>
           
@@ -137,10 +140,9 @@
             <p id="prev-cycle-summary" class="cycle-summary"></p>
             <details id="prev-cycle-details" class="cycle-details">
               <summary>
-                <span class="detail-arrow">▶</span>
+                <span class="detail-arrow">►</span>
                 <span id="prev-cycle-count">0</span>
-                <span> Sticky Notes from Last Session</span>
-                <span class="detail-arrow">◀</span>
+                <span> messages from last cycle</span>
               </summary>
               <ul id="prev-cycle-notes-list" class="prev-notes-list"></ul>
             </details>
@@ -150,36 +152,36 @@
         <section id="history" class="info-panel">
           <div class="panel-header">
             <span class="header-icon">📚</span>
-            <h2>THE ARCHIVES</h2>
+            <h2>SYSTEM ARCHIVES</h2>
             <span class="header-icon">📚</span>
           </div>
           
           <div class="history-content">
             <ol id="history-list" class="history-list">
-              <li class="history-empty">🎵 No records found yet 🎵</li>
+              <li class="history-empty">► No archives loaded</li>
             </ol>
           </div>
         </section>
       </main>
 
       <footer id="site-footer">
-        <div class="footer-bling"></div>
+        <div class="footer-glow"></div>
         <div class="footer-content">
-          <span class="footer-label">THE MATRIX © 2024</span>
-          <span class="footer-sep">💎</span>
+          <span class="footer-label">THE MATRIX © 1985-2024</span>
+          <span class="footer-sep">●</span>
           <a href="/logs" id="logs-link">SYSTEM LOGS</a>
-          <span class="footer-sep">💎</span>
-          <span class="footer-label">KEEP IT 💯</span>
+          <span class="footer-sep">●</span>
+          <span class="footer-label">ARCADE MODE</span>
         </div>
         <div class="footer-warning">
-          ⚠️ ALL POSTS PUBLIC · STAY REAL · NO FAKE VIBES ⚠️
+          ⚠️ ALL POSTS PUBLIC · PLAY FAIR · NO CHEATS ⚠️
         </div>
       </footer>
     </div>
 
     <template id="note-template">
       <article class="note" draggable="true">
-        <div class="note-bling">💎</div>
+        <div class="note-glow"></div>
         <div class="note-header">
           <span class="note-id"></span>
           <button class="note-delete" title="Delete note" aria-label="Delete">
@@ -187,17 +189,17 @@
           </button>
         </div>
         <div class="note-content">
-          <textarea maxlength="500" aria-label="Note content" placeholder="Drop your bars here..."></textarea>
+          <textarea maxlength="500" aria-label="Note content" placeholder="Your message here..."></textarea>
         </div>
         <div class="note-footer">
           <div class="note-author" aria-label="Author"></div>
           <div class="note-timestamp"></div>
         </div>
-        <div class="note-stamp">REAL</div>
+        <div class="note-badge">POST</div>
       </article>
     </template>
     
     <script src="/app.js"></script>
-    <script src="/bling.js"></script>
+    <script src="/retro-effects.js"></script>
   </body>
 </html>
