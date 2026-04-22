@@ -1,214 +1,219 @@
 <!doctype html>
-<html lang="en">
+<html lang="de-en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>⁂ The Eternal Scriptorium ⁂</title>
+    <title>⚔ DIE MATRIX KOMMANDOZENTRALE ⚔</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="parchment-texture"></div>
-    <canvas id="dust-canvas"></canvas>
+    <div class="noise-overlay"></div>
+    <div class="scanlines"></div>
     
-    <div class="illuminated-border border-top"></div>
-    <div class="illuminated-border border-bottom"></div>
-    <div class="illuminated-border border-left"></div>
-    <div class="illuminated-border border-right"></div>
+    <div class="barbed-wire barbed-top"></div>
+    <div class="barbed-wire barbed-bottom"></div>
     
     <div class="container">
-      <header class="manuscript-header">
-        <div class="flourish-top">
-          <svg viewBox="0 0 800 60" xmlns="http://www.w3.org/2000/svg">
-            <path d="M 0,30 Q 100,10 200,30 T 400,30 T 600,30 T 800,30" stroke="currentColor" fill="none" stroke-width="2"/>
-            <circle cx="400" cy="30" r="8" fill="currentColor"/>
-            <circle cx="200" cy="30" r="5" fill="currentColor"/>
-            <circle cx="600" cy="30" r="5" fill="currentColor"/>
+      <header class="command-header">
+        <div class="warning-stripe"></div>
+        
+        <div class="insignia-block">
+          <svg viewBox="0 0 120 120" class="military-badge">
+            <polygon points="60,10 80,40 110,40 85,60 95,95 60,75 25,95 35,60 10,40 40,40" 
+                     fill="var(--feldgrau)" stroke="var(--olive)" stroke-width="3"/>
+            <circle cx="60" cy="60" r="20" fill="var(--olive)" stroke="var(--black)" stroke-width="2"/>
+            <text x="60" y="68" font-size="20" fill="var(--black)" text-anchor="middle" font-weight="bold">M</text>
           </svg>
-        </div>
-        
-        <div class="title-block">
-          <div class="drop-cap">T</div>
+          
           <h1>
-            <span class="title-the">he</span>
-            <span class="title-main">Eternal Scriptorium</span>
+            <span class="title-prefix">DIE</span>
+            <span class="title-main">MATRIX</span>
+            <span class="title-suffix">KOMMANDOZENTRALE</span>
           </h1>
-          <p class="subtitle">Liber Notarum Immortalis</p>
-          <div class="motto">⁂ Verba Volant, Scripta Manent ⁂</div>
+          
+          <div class="motto-banner">
+            <span class="motto-left">⚡ STRATEGIC NOTES</span>
+            <span class="motto-divider">|</span>
+            <span class="motto-right">TAKTISCHE MELDUNGEN ⚡</span>
+          </div>
         </div>
         
-        <nav class="manuscript-nav">
-          <a href="/scriptorium.html" class="nav-link">
-            <span class="initial">S</span>criptorium
+        <nav class="command-nav">
+          <a href="/games.html" class="nav-btn">
+            <span class="btn-icon">🎯</span>
+            <span>KRIEGSSPIELE / WAR GAMES</span>
           </a>
-          <span class="nav-divider">✦</span>
-          <a href="/archive.html" class="nav-link">
-            <span class="initial">A</span>rchive
+          <a href="/intelligence.html" class="nav-btn">
+            <span class="btn-icon">📋</span>
+            <span>INTELLIGENCE REPORTS</span>
           </a>
-          <span class="nav-divider">✦</span>
-          <a href="/codex.html" class="nav-link">
-            <span class="initial">C</span>odex
+          <a href="/archive.html" class="nav-btn">
+            <span class="btn-icon">📁</span>
+            <span>ARCHIV / ARCHIVES</span>
           </a>
         </nav>
+        
+        <div class="warning-stripe"></div>
       </header>
 
-      <main class="manuscript-main">
-        <section class="illuminated-panel">
-          <div class="panel-ornament panel-ornament-tl"></div>
-          <div class="panel-ornament panel-ornament-tr"></div>
-          <div class="panel-ornament panel-ornament-bl"></div>
-          <div class="panel-ornament panel-ornament-br"></div>
+      <main class="operations-main">
+        <section class="briefing-panel">
+          <div class="panel-header">
+            <span class="panel-icon">⚠</span>
+            <h2>MISSION ZEITSTEMPEL / TIME STATUS</h2>
+            <span class="panel-icon">⚠</span>
+          </div>
           
-          <h2 class="panel-heading">
-            <span class="versal">T</span>empus Fugit
-          </h2>
-          
-          <div class="time-display">
-            <div class="time-item">
-              <div class="time-label">Hora Præsens</div>
-              <div class="time-value" id="big-clock">00:00:00</div>
+          <div class="status-grid">
+            <div class="status-item">
+              <div class="status-label">AKTUELLE ZEIT / CURRENT TIME</div>
+              <div class="status-display" id="big-clock">00:00:00</div>
             </div>
-            <div class="time-divider">◆</div>
-            <div class="time-item">
-              <div class="time-label">Cyclus Proximus</div>
-              <div class="time-value glow-text" id="generation-countdown">4:00:00</div>
+            <div class="status-divider">
+              <div class="divider-line"></div>
+            </div>
+            <div class="status-item">
+              <div class="status-label">NÄCHSTE OPERATION / NEXT CYCLE</div>
+              <div class="status-display alert-text" id="generation-countdown">4:00:00</div>
             </div>
           </div>
           
-          <div class="last-cycle-box">
-            <div class="box-label">Dictum Ultimum:</div>
-            <p class="box-content" id="last-summary">Silentium regnat in hac nocte...</p>
+          <div class="intel-box">
+            <div class="intel-header">LETZTE MELDUNG / LAST TRANSMISSION:</div>
+            <div class="intel-content" id="last-summary">Waiting for orders...</div>
           </div>
         </section>
 
-        <section class="illuminated-panel create-panel">
-          <div class="panel-ornament panel-ornament-tl"></div>
-          <div class="panel-ornament panel-ornament-tr"></div>
-          <div class="panel-ornament panel-ornament-bl"></div>
-          <div class="panel-ornament panel-ornament-br"></div>
+        <section class="briefing-panel">
+          <div class="panel-header">
+            <span class="panel-icon">✎</span>
+            <h2>NEUE NACHRICHT / NEW MESSAGE</h2>
+            <span class="panel-icon">✎</span>
+          </div>
           
-          <h2 class="panel-heading">
-            <span class="versal">S</span>cribe Novum
-          </h2>
-          
-          <div class="create-content">
-            <button id="new-note-btn" type="button" class="manuscript-button">
-              <span class="button-flourish">❦</span>
-              <span class="button-text">Inscribe Chartam</span>
-              <span class="button-flourish">❦</span>
+          <div class="deploy-content">
+            <button id="new-note-btn" type="button" class="deploy-button">
+              <span class="deploy-brackets">[</span>
+              <span class="deploy-text">NACHRICHT SENDEN / DEPLOY MESSAGE</span>
+              <span class="deploy-brackets">]</span>
             </button>
             
-            <p class="instruction-text">
-              ※ Trahe chartas ad relocandum ※ Clica ad emendandum ※ Textus solum acceptatur ※
-            </p>
+            <div class="instructions">
+              <p>⚡ Ziehe Nachrichten zum Verschieben / Drag messages to relocate</p>
+              <p>⚡ Klicke zum Bearbeiten / Click to edit your own</p>
+              <p>⚡ Nur Text erlaubt / Text only accepted</p>
+            </div>
           </div>
         </section>
 
-        <section id="canvas" class="parchment-collection" aria-label="Manuscript notes">
-          <div class="collection-corner corner-tl">
-            <svg width="60" height="60" viewBox="0 0 60 60">
-              <path d="M 0,20 Q 10,10 20,0 M 0,40 Q 20,20 40,0 M 0,60 Q 30,30 60,0" stroke="currentColor" fill="none" stroke-width="1.5"/>
+        <section id="canvas" class="operations-board" aria-label="Message board">
+          <div class="grid-overlay"></div>
+          <div class="corner-mark corner-tl">
+            <svg width="40" height="40" viewBox="0 0 40 40">
+              <line x1="0" y1="10" x2="10" y2="10" stroke="currentColor" stroke-width="2"/>
+              <line x1="10" y1="0" x2="10" y2="10" stroke="currentColor" stroke-width="2"/>
+              <line x1="0" y1="20" x2="20" y2="20" stroke="currentColor" stroke-width="1"/>
+              <line x1="20" y1="0" x2="20" y2="20" stroke="currentColor" stroke-width="1"/>
             </svg>
           </div>
-          <div class="collection-corner corner-tr">
-            <svg width="60" height="60" viewBox="0 0 60 60">
-              <path d="M 60,20 Q 50,10 40,0 M 60,40 Q 40,20 20,0 M 60,60 Q 30,30 0,0" stroke="currentColor" fill="none" stroke-width="1.5"/>
+          <div class="corner-mark corner-tr">
+            <svg width="40" height="40" viewBox="0 0 40 40">
+              <line x1="30" y1="10" x2="40" y2="10" stroke="currentColor" stroke-width="2"/>
+              <line x1="30" y1="0" x2="30" y2="10" stroke="currentColor" stroke-width="2"/>
+              <line x1="20" y1="20" x2="40" y2="20" stroke="currentColor" stroke-width="1"/>
+              <line x1="20" y1="0" x2="20" y2="20" stroke="currentColor" stroke-width="1"/>
             </svg>
           </div>
-          <div class="collection-corner corner-bl">
-            <svg width="60" height="60" viewBox="0 0 60 60">
-              <path d="M 0,40 Q 10,50 20,60 M 0,20 Q 20,40 40,60 M 0,0 Q 30,30 60,60" stroke="currentColor" fill="none" stroke-width="1.5"/>
+          <div class="corner-mark corner-bl">
+            <svg width="40" height="40" viewBox="0 0 40 40">
+              <line x1="0" y1="30" x2="10" y2="30" stroke="currentColor" stroke-width="2"/>
+              <line x1="10" y1="30" x2="10" y2="40" stroke="currentColor" stroke-width="2"/>
+              <line x1="0" y1="20" x2="20" y2="20" stroke="currentColor" stroke-width="1"/>
+              <line x1="20" y1="20" x2="20" y2="40" stroke="currentColor" stroke-width="1"/>
             </svg>
           </div>
-          <div class="collection-corner corner-br">
-            <svg width="60" height="60" viewBox="0 0 60 60">
-              <path d="M 60,40 Q 50,50 40,60 M 60,20 Q 40,40 20,60 M 60,0 Q 30,30 0,60" stroke="currentColor" fill="none" stroke-width="1.5"/>
+          <div class="corner-mark corner-br">
+            <svg width="40" height="40" viewBox="0 0 40 40">
+              <line x1="30" y1="30" x2="40" y2="30" stroke="currentColor" stroke-width="2"/>
+              <line x1="30" y1="30" x2="30" y2="40" stroke="currentColor" stroke-width="2"/>
+              <line x1="20" y1="20" x2="40" y2="20" stroke="currentColor" stroke-width="1"/>
+              <line x1="20" y1="20" x2="20" y2="40" stroke="currentColor" stroke-width="1"/>
             </svg>
           </div>
         </section>
 
-        <section id="previous-cycle" data-invariant="previous-cycle" class="illuminated-panel" hidden>
-          <div class="panel-ornament panel-ornament-tl"></div>
-          <div class="panel-ornament panel-ornament-tr"></div>
-          <div class="panel-ornament panel-ornament-bl"></div>
-          <div class="panel-ornament panel-ornament-br"></div>
-          
-          <h2 class="panel-heading">
-            <span class="versal">C</span>yclus Præteritus
-          </h2>
+        <section id="previous-cycle" data-invariant="previous-cycle" class="briefing-panel" hidden>
+          <div class="panel-header">
+            <span class="panel-icon">⏮</span>
+            <h2>VORHERIGE OPERATION / PREVIOUS CYCLE</h2>
+            <span class="panel-icon">⏮</span>
+          </div>
           
           <div class="cycle-content">
             <p id="prev-cycle-summary" class="cycle-summary"></p>
             <details id="prev-cycle-details" class="cycle-details">
               <summary>
-                <span class="detail-bracket">⟨</span>
+                <span class="detail-bracket">▸</span>
                 <span id="prev-cycle-count">0</span>
-                <span> Chartæ Archivatæ</span>
-                <span class="detail-bracket">⟩</span>
+                <span> Gesammelte Meldungen / Collected Messages</span>
+                <span class="detail-bracket">◂</span>
               </summary>
-              <ul id="prev-cycle-notes-list" class="archived-notes"></ul>
+              <ul id="prev-cycle-notes-list" class="archived-messages"></ul>
             </details>
           </div>
         </section>
 
-        <section id="history" class="illuminated-panel">
-          <div class="panel-ornament panel-ornament-tl"></div>
-          <div class="panel-ornament panel-ornament-tr"></div>
-          <div class="panel-ornament panel-ornament-bl"></div>
-          <div class="panel-ornament panel-ornament-br"></div>
+        <section id="history" class="briefing-panel">
+          <div class="panel-header">
+            <span class="panel-icon">📜</span>
+            <h2>OPERATIONSPROTOKOLL / OPERATION LOG</h2>
+            <span class="panel-icon">📜</span>
+          </div>
           
-          <h2 class="panel-heading">
-            <span class="versal">C</span>hronicon
-          </h2>
-          
-          <div class="chronicon-content">
+          <div class="history-content">
             <ol id="history-list" class="history-list">
-              <li class="history-empty">⁓ Nullum invenitur ⁓</li>
+              <li class="history-empty">⚠ Keine Aufzeichnungen / No records found ⚠</li>
             </ol>
           </div>
         </section>
       </main>
 
       <footer id="site-footer">
-        <div class="footer-flourish">
-          <svg viewBox="0 0 800 40" xmlns="http://www.w3.org/2000/svg">
-            <path d="M 0,20 Q 100,10 200,20 T 400,20 T 600,20 T 800,20" stroke="currentColor" fill="none" stroke-width="1.5"/>
-          </svg>
-        </div>
+        <div class="footer-tape"></div>
         <div class="footer-content">
-          <span>Scriptorium v.MMXXV</span>
-          <span class="separator">◇</span>
-          <a href="/logs" id="logs-link">Liber Registrorum</a>
-          <span class="separator">◇</span>
-          <span>In perpetuum conservandum</span>
+          <span class="footer-code">KOMMANDO-MATRIX-42</span>
+          <span class="footer-separator">●</span>
+          <a href="/logs" id="logs-link">SYSTEMPROTOKOLL / SYSTEM LOGS</a>
+          <span class="footer-separator">●</span>
+          <span class="footer-code">GEHEIM / CLASSIFIED</span>
+        </div>
+        <div class="footer-warning">
+          ⚠ ACHTUNG: Alle Nachrichten werden überwacht / WARNING: All messages are monitored ⚠
         </div>
       </footer>
     </div>
 
     <template id="note-template">
       <article class="note" draggable="true">
-        <div class="note-decoration note-dec-tl"></div>
-        <div class="note-decoration note-dec-tr"></div>
-        <div class="note-decoration note-dec-bl"></div>
-        <div class="note-decoration note-dec-br"></div>
-        
+        <div class="note-stamp">GEHEIM</div>
         <div class="note-header">
           <span class="note-id"></span>
-          <button class="note-delete" title="Delere chartam" aria-label="Delete">
-            ✕
+          <button class="note-delete" title="Nachricht löschen / Delete message" aria-label="Delete">
+            ✖
           </button>
         </div>
         <div class="note-content">
-          <textarea maxlength="500" aria-label="Note content" placeholder="Scribe hic..."></textarea>
+          <textarea maxlength="500" aria-label="Note content" placeholder="Schreiben Sie hier / Write here..."></textarea>
         </div>
         <div class="note-footer">
           <div class="note-author" aria-label="Author"></div>
           <div class="note-timestamp"></div>
         </div>
+        <div class="note-classification">VERTRAULICH / CONFIDENTIAL</div>
       </article>
     </template>
     
     <script src="/app.js"></script>
-    <script src="/dust-particles.js"></script>
-    <script src="/candle.js"></script>
+    <script src="/military-effects.js"></script>
   </body>
 </html>

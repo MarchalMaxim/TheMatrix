@@ -7,10 +7,10 @@ const lastSummary = document.getElementById("last-summary");
 const historyList = document.getElementById("history-list");
 
 const NOTE_COLORS = [
+  "linear-gradient(135deg, #fffef0, #f5f5dc)",
   "linear-gradient(135deg, #faf5e8, #f4e8d0)",
-  "linear-gradient(135deg, #f4e8d0, #e0d4b8)",
-  "linear-gradient(135deg, #faf5e8, #e0d4b8)",
-  "linear-gradient(135deg, #f4e8d0, #faf5e8)",
+  "linear-gradient(135deg, #f5f5dc, #e0d4b8)",
+  "linear-gradient(135deg, #fffef0, #e0d4b8)",
 ];
 
 function pickRandomColor() {
@@ -59,24 +59,24 @@ function createNoteElement(note) {
   textarea.value = note.text || "";
   
   if (noteId) {
-    noteId.textContent = `Charta_${String(note.id).padStart(4, '0')}`;
+    noteId.textContent = `MSG-${String(note.id).padStart(4, '0')}`;
   }
   
   if (authorEl) {
-    authorEl.textContent = note.author_label ? `Scriba:${note.author_label}` : "";
+    authorEl.textContent = note.author_label ? `Agent:${note.author_label}` : "";
   }
 
   if (note.is_owner) {
     deleteBtn.style.display = "flex";
     deleteBtn.addEventListener("click", async () => {
-      if (!confirm("Delere hanc chartam?")) return;
+      if (!confirm("Diese Nachricht löschen? / Delete this message?")) return;
       try {
         const resp = await fetch(`/api/notes/${note.id}`, { method: "DELETE" });
         if (!resp.ok) throw new Error(`${resp.status}`);
         noteEl.remove();
-        showToast("Charta deleta est");
+        showToast("Nachricht gelöscht / Message deleted");
       } catch (_err) {
-        showToast("Deletio non successit");
+        showToast("Löschen fehlgeschlagen / Delete failed");
       }
     });
   } else {
@@ -96,7 +96,7 @@ function createNoteElement(note) {
         body: JSON.stringify({ text: textarea.value }),
       });
     } catch (_error) {
-      alert("Emendatio non successit");
+      alert("Bearbeitung fehlgeschlagen / Edit failed");
     }
   });
 
@@ -111,7 +111,7 @@ async function loadHistory() {
     if (!commits.length) {
       const li = document.createElement("li");
       li.className = "history-empty";
-      li.textContent = "⁓ Nullum invenitur ⁓";
+      li.textContent = "⚠ Keine Aufzeichnungen / No records found ⚠";
       historyList.appendChild(li);
       return;
     }
@@ -130,7 +130,7 @@ async function loadHistory() {
       historyList.appendChild(li);
     }
   } catch (_err) {
-    historyList.innerHTML = `<li class="history-empty">Accessus negatus</li>`;
+    historyList.innerHTML = `<li class="history-empty">Zugriff verweigert / Access denied</li>`;
   }
 }
 
@@ -145,7 +145,7 @@ async function loadNotes() {
     const notes = await requestJson("/api/notes");
     notes.forEach((note) => canvas.appendChild(createNoteElement(note)));
   } catch (_error) {
-    alert("Chartae non inventae");
+    alert("Nachrichten konnten nicht geladen werden / Could not load messages");
   }
 }
 
@@ -184,7 +184,7 @@ async function refreshWorkerStatus() {
     const status = await requestJson("/api/worker-status");
     nextRunEpochMs = typeof status.next_run_epoch === "number" ? status.next_run_epoch * 1000 : null;
     if (lastSummary) {
-      lastSummary.textContent = status.summary || "Silentium regnat in hac nocte...";
+      lastSummary.textContent = status.summary || "Warten auf Befehle... / Waiting for orders...";
     }
     updateGenerationCountdown();
 
@@ -193,13 +193,13 @@ async function refreshWorkerStatus() {
         canvas.innerHTML = "";
         await loadNotes();
         loadHistory();
-        showToast("Novus cyclus inceptus est");
+        showToast("Neue Operation gestartet / New operation started");
       }
       currentCycleId = status.cycle_id;
     }
   } catch (_error) {
     if (lastSummary) {
-      lastSummary.textContent = "Status incognitus";
+      lastSummary.textContent = "Status unbekannt / Status unknown";
     }
   }
 }
@@ -214,16 +214,16 @@ function solvePow(challenge, difficulty) {
 }
 
 async function createNewNote() {
-  const text = window.prompt("Scribe verba tua:", "");
+  const text = window.prompt("Ihre Nachricht eingeben / Enter your message:", "");
   if (text === null || text.trim() === "") return;
 
   newNoteBtn.disabled = true;
   const origLabel = newNoteBtn.innerHTML;
-  newNoteBtn.innerHTML = '<span class="button-flourish">⌛</span><span class="button-text">Elaboro...</span><span class="button-flourish">⌛</span>';
+  newNoteBtn.innerHTML = '<span class="deploy-brackets">[</span><span class="deploy-text">VERARBEITUNG... / PROCESSING...</span><span class="deploy-brackets">]</span>';
   
   try {
     const pow = await requestJson("/api/pow-challenge");
-    showToast("Computatio in progressu...");
+    showToast("Berechnung läuft... / Computing...");
     const nonce = await solvePow(pow.challenge, pow.difficulty_submit);
 
     const note = await requestJson("/api/notes", {
@@ -245,10 +245,10 @@ async function createNewNote() {
     noteEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
     setTimeout(() => noteEl.classList.remove("just-added"), 800);
     
-    const message = note.author_label ? `Scriptum est ut ${note.author_label}` : "Charta inscripta est";
+    const message = note.author_label ? `Gesendet als ${note.author_label} / Sent as ${note.author_label}` : "Nachricht gesendet / Message sent";
     showToast(message);
   } catch (_error) {
-    alert("Inscriptio non successit");
+    alert("Senden fehlgeschlagen / Send failed");
   } finally {
     newNoteBtn.disabled = false;
     newNoteBtn.innerHTML = origLabel;
@@ -265,7 +265,7 @@ canvas.addEventListener("drop", async (event) => {
     return;
   }
   const rect = canvas.getBoundingClientRect();
-  const x = Math.max(0, Math.round(event.clientX - rect.left - 130));
+  const x = Math.max(0, Math.round(event.clientX - rect.left - 140));
   const y = Math.max(0, Math.round(event.clientY - rect.top - 20));
   dragNote.style.left = `${x}px`;
   dragNote.style.top = `${y}px`;
@@ -279,7 +279,7 @@ canvas.addEventListener("drop", async (event) => {
       body: JSON.stringify({ x, y }),
     });
   } catch (_error) {
-    alert("Motio non successit");
+    alert("Verschiebung fehlgeschlagen / Move failed");
   }
 });
 

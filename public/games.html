@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="de-en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>⚔ KRIEGSSPIELE / WAR GAMES ⚔</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/games.css" />
+  </head>
+  <body>
+    <div class="noise-overlay"></div>
+    <div class="scanlines"></div>
+    
+    <div class="barbed-wire barbed-top"></div>
+    <div class="barbed-wire barbed-bottom"></div>
+    
+    <div class="container">
+      <header class="command-header">
+        <div class="warning-stripe"></div>
+        
+        <div class="insignia-block">
+          <svg viewBox="0 0 120 120" class="military-badge">
+            <polygon points="60,10 80,40 110,40 85,60 95,95 60,75 25,95 35,60 10,40 40,40" 
+                     fill="var(--feldgrau)" stroke="var(--olive)" stroke-width="3"/>
+            <circle cx="60" cy="60" r="20" fill="var(--olive)" stroke="var(--black)" stroke-width="2"/>
+            <text x="60" y="68" font-size="20" fill="var(--black)" text-anchor="middle" font-weight="bold">W</text>
+          </svg>
+          
+          <h1>
+            <span class="title-prefix">KRIEGSSPIELE</span>
+            <span class="title-main">WAR GAMES</span>
+            <span class="title-suffix">Training Simulation</span>
+          </h1>
+          
+          <div class="motto-banner">
+            <span class="motto-left">⚡ STRATEGIE UND TAKTIK</span>
+            <span class="motto-divider">|</span>
+            <span class="motto-right">STRATEGY & TACTICS ⚡</span>
+          </div>
+        </div>
+        
+        <nav class="command-nav">
+          <a href="/index.html" class="nav-btn">
+            <span class="btn-icon">◄</span>
+            <span>ZURÜCK ZUR KOMMANDOZENTRALE / BACK TO COMMAND</span>
+          </a>
+        </nav>
+        
+        <div class="warning-stripe"></div>
+      </header>
+
+      <main class="games-main">
+        <section class="briefing-panel">
+          <div class="panel-header">
+            <span class="panel-icon">🎯</span>
+            <h2>OPERATION: BLOCKADE - WW2 TETRIS</h2>
+            <span class="panel-icon">🎯</span>
+          </div>
+          
+          <div class="game-container">
+            <div class="game-info">
+              <div class="info-panel">
+                <h3>MISSION BRIEFING / EINSATZBESPRECHUNG</h3>
+                <p>Die feindlichen Panzer rücken vor! Stapeln Sie militärische Ausrüstung, um die Verteidigungslinien zu verstärken.</p>
+                <p>Enemy tanks are advancing! Stack military equipment to fortify defensive lines.</p>
+                
+                <div class="controls-box">
+                  <h4>STEUERUNG / CONTROLS:</h4>
+                  <ul>
+                    <li><strong>←/→</strong> - Bewegen / Move</li>
+                    <li><strong>↓</strong> - Schneller fallen / Fast drop</li>
+                    <li><strong>↑ oder SPACE</strong> - Drehen / Rotate</li>
+                    <li><strong>P</strong> - Pause / Pausieren</li>
+                    <li><strong>R</strong> - Neustart / Restart</li>
+                  </ul>
+                </div>
+              </div>
+              
+              <div class="stats-panel">
+                <div class="stat-item">
+                  <div class="stat-label">PUNKTE / SCORE</div>
+                  <div class="stat-value" id="score">0</div>
+                </div>
+                
+                <div class="stat-item">
+                  <div class="stat-label">LINIEN / LINES</div>
+                  <div class="stat-value" id="lines">0</div>
+                </div>
+                
+                <div class="stat-item">
+                  <div class="stat-label">STUFE / LEVEL</div>
+                  <div class="stat-value" id="level">1</div>
+                </div>
+                
+                <div class="next-piece-container">
+                  <div class="next-label">NÄCHSTES TEIL / NEXT</div>
+                  <canvas id="next-canvas" width="120" height="120"></canvas>
+                </div>
+              </div>
+            </div>
+            
+            <div class="game-board-container">
+              <div class="battlefield-header">
+                <span class="battlefield-label">⚠ SCHLACHTFELD / BATTLEFIELD ⚠</span>
+              </div>
+              <canvas id="game-canvas" width="300" height="600"></canvas>
+              <div id="game-over-overlay" class="game-over-overlay" style="display: none;">
+                <div class="game-over-content">
+                  <h2>MISSION GESCHEITERT</h2>
+                  <h3>MISSION FAILED</h3>
+                  <div class="final-score">
+                    ENDSTAND / FINAL SCORE: <span id="final-score">0</span>
+                  </div>
+                  <button id="restart-btn" class="deploy-button">
+                    <span class="deploy-brackets">[</span>
+                    <span class="deploy-text">NEUSTART / RESTART</span>
+                    <span class="deploy-brackets">]</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        
+        <section class="briefing-panel">
+          <div class="panel-header">
+            <span class="panel-icon">📊</span>
+            <h2>OPERATIONSANLEITUNG / OPERATION GUIDE</h2>
+            <span class="panel-icon">📊</span>
+          </div>
+          
+          <div class="guide-content">
+            <div class="guide-section">
+              <h3>MISSION OBJECTIVES / MISSIONSZIELE:</h3>
+              <ul>
+                <li>Stapeln Sie die herabfallenden militärischen Blöcke (Panzer, Lastwagen, Bunker)</li>
+                <li>Stack the falling military blocks (tanks, trucks, bunkers)</li>
+                <li>Vollständige horizontale Linien werden eliminiert</li>
+                <li>Complete horizontal lines are eliminated</li>
+                <li>Verdienen Sie Punkte und steigen Sie auf höhere Schwierigkeitsstufen</li>
+                <li>Earn points and advance to higher difficulty levels</li>
+                <li>Das Spiel endet, wenn das Spielfeld überläuft</li>
+                <li>Game ends when the field overflows</li>
+              </ul>
+            </div>
+            
+            <div class="guide-section">
+              <h3>PUNKTESYSTEM / SCORING SYSTEM:</h3>
+              <ul>
+                <li><strong>1 Linie / Line:</strong> 100 Punkte × Stufe</li>
+                <li><strong>2 Linien / Lines:</strong> 300 Punkte × Stufe</li>
+                <li><strong>3 Linien / Lines:</strong> 500 Punkte × Stufe</li>
+                <li><strong>4 Linien / Lines (BLITZKRIEG!):</strong> 800 Punkte × Stufe</li>
+              </ul>
+            </div>
+            
+            <div class="guide-section">
+              <h3>THEMATISCHE BLÖCKE / THEMED BLOCKS:</h3>
+              <p>Jeder Tetris-Block repräsentiert verschiedene WW2-Militärausrüstung mit authentischen Feldgrau-, Oliv- und Khaki-Farben.</p>
+              <p>Each Tetris block represents different WW2 military equipment with authentic feldgrau, olive, and khaki colors.</p>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer id="site-footer">
+        <div class="footer-tape"></div>
+        <div class="footer-content">
+          <span class="footer-code">KRIEGSSPIELE-DIVISION-19</span>
+          <span class="footer-separator">●</span>
+          <a href="/logs" id="logs-link">SYSTEMPROTOKOLL / SYSTEM LOGS</a>
+          <span class="footer-separator">●</span>
+          <span class="footer-code">NUR FÜR ÜBUNGSZWECKE / TRAINING ONLY</span>
+        </div>
+        <div class="footer-warning">
+          ⚠ Dies ist ein Trainingssimulator / This is a training simulator ⚠
+        </div>
+      </footer>
+    </div>
+
+    <script src="/tetris.js"></script>
+  </body>
+</html>
