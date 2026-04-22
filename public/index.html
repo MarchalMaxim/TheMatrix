@@ -3,197 +3,176 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TheMatrix • Digital Garden</title>
+    <title>MATRIX://CONTROL_TERMINAL</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="garden-background">
-      <canvas id="floating-particles" aria-hidden="true"></canvas>
-    </div>
-
-    <div class="vine-decoration vine-left" aria-hidden="true"></div>
-    <div class="vine-decoration vine-right" aria-hidden="true"></div>
+    <div class="crt-overlay" id="crt-overlay"></div>
+    <div class="scanlines"></div>
+    
+    <div class="grid-background"></div>
     
     <div class="container">
-      <header class="garden-header">
-        <div class="title-garden">
-          <svg class="leaf-icon" viewBox="0 0 24 24" width="48" height="48" aria-hidden="true">
-            <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5s1.75 3.75 1.75 3.75C7 8 17 8 17 8z"/>
-          </svg>
-          <h1>The Matrix</h1>
-          <svg class="leaf-icon" viewBox="0 0 24 24" width="48" height="48" aria-hidden="true">
-            <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5s1.75 3.75 1.75 3.75C7 8 17 8 17 8z"/>
-          </svg>
+      <header class="terminal-header">
+        <div class="status-bar">
+          <span class="status-item">
+            <span class="status-indicator active"></span>
+            SYSTEM_ONLINE
+          </span>
+          <span class="status-item">
+            <span class="status-indicator warning"></span>
+            SURVEILLANCE_ACTIVE
+          </span>
+          <span class="status-item">
+            <span class="status-indicator"></span>
+            UPTIME: <span id="big-clock">00:00:00</span>
+          </span>
         </div>
-        <p class="subtitle">A living wall of ideas • tended with care</p>
         
-        <nav class="garden-nav">
-          <a href="/gallery.html" class="nav-link">
-            <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20">
-              <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
-            </svg>
-            Botanical Gallery
+        <div class="title-block">
+          <div class="title-grid">
+            <div class="grid-line"></div>
+            <div class="grid-line"></div>
+            <div class="grid-line"></div>
+          </div>
+          <h1>THE MATRIX</h1>
+          <div class="subtitle-box">
+            <span class="glitch-text" data-text="COLLECTIVE CONSCIOUSNESS INTERFACE">COLLECTIVE CONSCIOUSNESS INTERFACE</span>
+          </div>
+        </div>
+        
+        <nav class="command-nav">
+          <a href="/manual.html" class="nav-button">
+            <span class="button-bracket">[</span>OPERATIONS_MANUAL<span class="button-bracket">]</span>
           </a>
-          <a href="/care-guide.html" class="nav-link">
-            <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-            </svg>
-            Care Guide
+          <a href="/surveillance.html" class="nav-button">
+            <span class="button-bracket">[</span>SURVEILLANCE_LOG<span class="button-bracket">]</span>
           </a>
-          <a href="/logs" id="logs-link" class="nav-link">
-            <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20">
-              <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
-            </svg>
-            Garden Log
+          <a href="/protocols.html" class="nav-button">
+            <span class="button-bracket">[</span>MAINTENANCE_PROTOCOLS<span class="button-bracket">]</span>
           </a>
         </nav>
       </header>
 
-      <main class="garden-main">
-        <section class="status-card">
-          <div class="card-header">
-            <svg class="card-icon" viewBox="0 0 24 24" width="24" height="24">
-              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>
-              <path d="M12 6v6l4 2"/>
-            </svg>
-            <h2>Garden Status</h2>
+      <main class="terminal-main">
+        <section class="control-panel">
+          <div class="panel-header">
+            <span class="panel-title">&gt;&gt; SYSTEM_STATUS</span>
+            <span class="panel-indicator"></span>
           </div>
-          <div class="status-grid">
-            <div class="status-item">
-              <span class="status-label">Current Time</span>
-              <span class="status-value" id="big-clock">--:--:--</span>
+          <div class="panel-content">
+            <div class="status-grid">
+              <div class="status-block">
+                <div class="status-label">SYSTEM_TIME</div>
+                <div class="status-value mono" id="big-clock-2">--:--:--</div>
+              </div>
+              <div class="status-block">
+                <div class="status-label">NEXT_CYCLE_ETA</div>
+                <div class="status-value warning-text mono" id="generation-countdown">4:00:00</div>
+              </div>
+              <div class="status-block full-span">
+                <div class="status-label">LAST_TRANSMISSION</div>
+                <div class="status-value" id="last-summary">AWAITING_OPERATOR_INPUT...</div>
+              </div>
             </div>
-            <div class="status-item">
-              <span class="status-label">Next Bloom Cycle</span>
-              <span class="status-value bloom-countdown" id="generation-countdown">4:00:00</span>
-            </div>
-            <div class="status-item full-width">
-              <span class="status-label">Last Season's Summary</span>
-              <span class="status-value summary-text" id="last-summary">Waiting for the garden keeper's notes...</span>
-            </div>
-          </div>
-        </section>
-
-        <section class="action-section">
-          <button id="new-note-btn" type="button" class="plant-button">
-            <svg class="button-icon" viewBox="0 0 24 24" width="20" height="20">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M12 8v8M8 12h8" stroke="white" stroke-width="2"/>
-            </svg>
-            Plant a New Idea
-          </button>
-          <p class="help-text">
-            Drag your notes to arrange them • Click to tend your own • Each note can be watered with care
-          </p>
-        </section>
-
-        <section id="canvas" class="notes-garden" aria-label="Ideas garden">
-          <div class="garden-border">
-            <svg class="corner-flourish top-left" viewBox="0 0 50 50" width="50" height="50">
-              <path d="M0,50 Q0,0 50,0" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <circle cx="10" cy="10" r="3"/>
-              <circle cx="20" cy="5" r="2"/>
-            </svg>
-            <svg class="corner-flourish top-right" viewBox="0 0 50 50" width="50" height="50">
-              <path d="M50,50 Q50,0 0,0" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <circle cx="40" cy="10" r="3"/>
-              <circle cx="30" cy="5" r="2"/>
-            </svg>
-            <svg class="corner-flourish bottom-left" viewBox="0 0 50 50" width="50" height="50">
-              <path d="M0,0 Q0,50 50,50" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <circle cx="10" cy="40" r="3"/>
-              <circle cx="20" cy="45" r="2"/>
-            </svg>
-            <svg class="corner-flourish bottom-right" viewBox="0 0 50 50" width="50" height="50">
-              <path d="M50,0 Q50,50 0,50" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <circle cx="40" cy="40" r="3"/>
-              <circle cx="30" cy="45" r="2"/>
-            </svg>
           </div>
         </section>
 
-        <section id="previous-cycle" data-invariant="previous-cycle" hidden>
-          <div class="section-card">
-            <div class="card-header">
-              <svg class="card-icon" viewBox="0 0 24 24" width="24" height="24">
-                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
-              </svg>
-              <h2>Last Season's Harvest</h2>
-            </div>
+        <section class="control-panel">
+          <div class="panel-header">
+            <span class="panel-title">&gt;&gt; INPUT_INTERFACE</span>
+            <span class="panel-indicator active"></span>
+          </div>
+          <div class="panel-content center">
+            <button id="new-note-btn" type="button" class="command-button">
+              <span class="button-inner">
+                <span class="button-symbol">+</span>
+                <span>TRANSMIT_DATA_PACKET</span>
+              </span>
+            </button>
+            <p class="help-text">
+              // DRAG_PACKETS_TO_RELOCATE // CLICK_TO_MODIFY_OWN_TRANSMISSIONS // SYSTEM_ACCEPTS_TEXT_INPUT_ONLY
+            </p>
+          </div>
+        </section>
+
+        <section class="radar-section">
+          <canvas id="radar-canvas" width="200" height="200"></canvas>
+          <div class="radar-label">SECTOR_SCAN</div>
+        </section>
+
+        <section id="canvas" class="data-grid" aria-label="Data packets">
+          <div class="grid-corner top-left"></div>
+          <div class="grid-corner top-right"></div>
+          <div class="grid-corner bottom-left"></div>
+          <div class="grid-corner bottom-right"></div>
+        </section>
+
+        <section id="previous-cycle" data-invariant="previous-cycle" class="control-panel" hidden>
+          <div class="panel-header">
+            <span class="panel-title">&gt;&gt; PREVIOUS_CYCLE_DATA</span>
+            <span class="panel-indicator"></span>
+          </div>
+          <div class="panel-content">
             <p id="prev-cycle-summary" class="cycle-summary"></p>
             <details id="prev-cycle-details" class="cycle-details">
               <summary>
-                <span id="prev-cycle-count">0</span> seeds were collected
-                <svg class="chevron" viewBox="0 0 24 24" width="16" height="16">
-                  <path d="M7 10l5 5 5-5"/>
-                </svg>
+                <span class="summary-bracket">[</span>
+                <span id="prev-cycle-count">0</span> ARCHIVED_TRANSMISSIONS
+                <span class="summary-bracket">]</span>
+                <span class="chevron">▼</span>
               </summary>
               <ul id="prev-cycle-notes-list" class="prev-notes-list"></ul>
             </details>
           </div>
         </section>
 
-        <section id="history" class="history-section">
-          <div class="section-card">
-            <div class="card-header">
-              <svg class="card-icon" viewBox="0 0 24 24" width="24" height="24">
-                <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/>
-              </svg>
-              <h2>Growth History</h2>
-            </div>
+        <section id="history" class="control-panel">
+          <div class="panel-header">
+            <span class="panel-title">&gt;&gt; COMMIT_LOG</span>
+            <span class="panel-indicator"></span>
+          </div>
+          <div class="panel-content">
             <ol id="history-list" class="history-list">
-              <li class="history-empty">No growth records yet</li>
+              <li class="history-empty">// NO_ENTRIES_FOUND</li>
             </ol>
           </div>
         </section>
       </main>
 
       <footer id="site-footer">
-        <div class="footer-content">
-          <svg class="footer-flourish" viewBox="0 0 200 30" width="200" height="30">
-            <path d="M0,15 Q50,5 100,15 T200,15" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
-            <circle cx="50" cy="10" r="2" opacity="0.5"/>
-            <circle cx="100" cy="15" r="2.5" opacity="0.5"/>
-            <circle cx="150" cy="10" r="2" opacity="0.5"/>
-          </svg>
-          <p>TheMatrix Digital Garden • Cultivated with care since 2024</p>
-          <p class="footer-links">
-            <a href="/logs">Garden Journal</a> • 
-            <a href="/care-guide.html">Growing Guide</a>
-          </p>
+        <div class="footer-bar">
+          <span>MATRIX_v2.1.4</span>
+          <span>|</span>
+          <a href="/logs" id="logs-link">ACCESS_LOG</a>
+          <span>|</span>
+          <span>AUTHORIZED_PERSONNEL_ONLY</span>
         </div>
+        <div class="footer-noise"></div>
       </footer>
     </div>
 
     <template id="note-template">
       <article class="note" draggable="true">
-        <div class="note-decoration note-top">
-          <svg viewBox="0 0 100 10" width="100%" height="10">
-            <path d="M0,5 Q25,0 50,5 T100,5" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"/>
-          </svg>
+        <div class="note-header">
+          <span class="note-id"></span>
+          <button class="note-delete" title="Delete transmission" aria-label="Delete">
+            <span>×</span>
+          </button>
         </div>
         <div class="note-content">
-          <textarea maxlength="500" aria-label="Note content" placeholder="plant your thoughts here..."></textarea>
+          <textarea maxlength="500" aria-label="Note content" placeholder="INPUT_TEXT_DATA..."></textarea>
         </div>
         <div class="note-footer">
           <div class="note-author" aria-label="Author"></div>
-          <button class="note-delete" title="Remove this note" aria-label="Delete">
-            <svg viewBox="0 0 24 24" width="16" height="16">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-            </svg>
-          </button>
-        </div>
-        <div class="note-decoration note-bottom">
-          <svg viewBox="0 0 100 10" width="100%" height="10">
-            <path d="M0,5 Q25,10 50,5 T100,5" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"/>
-          </svg>
+          <div class="note-timestamp"></div>
         </div>
       </article>
     </template>
     
     <script src="/app.js"></script>
-    <script src="/particles.js"></script>
-    <script src="/audio.js"></script>
+    <script src="/crt-effect.js"></script>
+    <script src="/radar.js"></script>
+    <script src="/industrial-audio.js"></script>
   </body>
 </html>

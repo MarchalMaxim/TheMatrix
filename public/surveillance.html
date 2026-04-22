@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SURVEILLANCE LOG // MATRIX</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <style>
+      .log-content {
+        max-width: 1000px;
+        margin: 0 auto;
+      }
+      .log-entry {
+        margin: 1.5rem 0;
+        padding: 1rem;
+        background: var(--concrete);
+        border-left: 3px solid var(--warning-yellow);
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.85rem;
+        line-height: 1.6;
+      }
+      .log-timestamp {
+        color: var(--active-green);
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+      }
+      .log-level {
+        display: inline-block;
+        padding: 0.2rem 0.6rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        margin-right: 0.5rem;
+        letter-spacing: 0.05em;
+      }
+      .log-level.info {
+        background: var(--active-green);
+        color: var(--concrete-dark);
+      }
+      .log-level.warning {
+        background: var(--warning-yellow);
+        color: var(--concrete-dark);
+      }
+      .log-level.critical {
+        background: var(--warning-red);
+        color: white;
+      }
+      .log-message {
+        color: var(--text-secondary);
+        margin-top: 0.5rem;
+      }
+      .camera-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin: 2rem 0;
+      }
+      .camera-feed {
+        background: var(--concrete-dark);
+        border: 2px solid var(--concrete-light);
+        padding: 0.5rem;
+        aspect-ratio: 4/3;
+        position: relative;
+        overflow: hidden;
+      }
+      .camera-feed::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 2px,
+          rgba(0, 255, 102, 0.03) 2px,
+          rgba(0, 255, 102, 0.03) 4px
+        );
+        pointer-events: none;
+        animation: scan-camera 4s linear infinite;
+      }
+      @keyframes scan-camera {
+        0% { transform: translateY(-100%); }
+        100% { transform: translateY(100%); }
+      }
+      .camera-label {
+        position: absolute;
+        top: 0.5rem;
+        left: 0.5rem;
+        font-size: 0.65rem;
+        color: var(--warning-yellow);
+        background: rgba(26, 26, 26, 0.8);
+        padding: 0.2rem 0.5rem;
+        letter-spacing: 0.05em;
+        font-weight: 700;
+      }
+      .camera-static {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" /></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.3" /></svg>');
+        opacity: 0.5;
+        animation: flicker 0.1s infinite;
+      }
+      .signal-indicator {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        width: 8px;
+        height: 8px;
+        background: var(--active-green);
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+      }
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin: 2rem 0;
+      }
+      .metric-box {
+        background: var(--concrete-dark);
+        border: 2px solid var(--metal);
+        padding: 1rem;
+        text-align: center;
+      }
+      .metric-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--active-green);
+        font-family: 'IBM Plex Mono', monospace;
+      }
+      .metric-label {
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+        letter-spacing: 0.1em;
+        margin-top: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="crt-overlay"></div>
+    <div class="scanlines"></div>
+    <div class="grid-background"></div>
+    
+    <div class="container log-content">
+      <header class="terminal-header">
+        <div class="status-bar">
+          <span class="status-item">
+            <span class="status-indicator warning"></span>
+            SURVEILLANCE_ACTIVE
+          </span>
+          <span class="status-item">
+            CAMERAS: <span id="camera-count">8</span> ONLINE
+          </span>
+          <span class="status-item">
+            <a href="/" style="color: var(--warning-yellow); text-decoration: none;">&lt;&lt; RETURN_TO_TERMINAL</a>
+          </span>
+        </div>
+        <div class="title-block">
+          <h1>SURVEILLANCE LOG</h1>
+          <div class="subtitle-box">
+            <span>CONTINUOUS MONITORING // ALL SECTORS</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="terminal-main">
+        <div class="control-panel">
+          <div class="panel-header">
+            <span class="panel-title">&gt;&gt; LIVE_CAMERA_FEEDS</span>
+            <span class="panel-indicator active"></span>
+          </div>
+          <div class="panel-content">
+            <div class="camera-grid">
+              <div class="camera-feed">
+                <div class="camera-label">CAM_01_NORTH</div>
+                <div class="signal-indicator"></div>
+                <div class="camera-static"></div>
+              </div>
+              <div class="camera-feed">
+                <div class="camera-label">CAM_02_EAST</div>
+                <div class="signal-indicator"></div>
+                <div class="camera-static"></div>
+              </div>
+              <div class="camera-feed">
+                <div class="camera-label">CAM_03_SOUTH</div>
+                <div class="signal-indicator"></div>
+                <div class="camera-static"></div>
+              </div>
+              <div class="camera-feed">
+                <div class="camera-label">CAM_04_WEST</div>
+                <div class="signal-indicator"></div>
+                <div class="camera-static"></div>
+              </div>
+              <div class="camera-feed">
+                <div class="camera-label">CAM_05_CENTRAL</div>
+                <div class="signal-indicator"></div>
+                <div class="camera-static"></div>
+              </div>
+              <div class="camera-feed">
+                <div class="camera-label">CAM_06_PERIMETER</div>
+                <div class="signal-indicator"></div>
+                <div class="camera-static"></div>
+              </div>
+              <div class="camera-feed">
+                <div class="camera-label">CAM_07_VAULT</div>
+                <div class="signal-indicator"></div>
+                <div class="camera-static"></div>
+              </div>
+              <div class="camera-feed">
+                <div class="camera-label">CAM_08_ACCESS</div>
+                <div class="signal-indicator"></div>
+                <div class="camera-static"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-panel">
+          <div class="panel-header">
+            <span class="panel-title">&gt;&gt; SYSTEM_METRICS</span>
+          </div>
+          <div class="panel-content">
+            <div class="metrics-grid">
+              <div class="metric-box">
+                <div class="metric-value" id="packet-count">0</div>
+                <div class="metric-label">ACTIVE_PACKETS</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-value" id="connection-count">1</div>
+                <div class="metric-label">CONNECTIONS</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-value" id="uptime-hours">0</div>
+                <div class="metric-label">UPTIME_HOURS</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-value" id="cpu-usage">23%</div>
+                <div class="metric-label">CPU_UTILIZATION</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-panel">
+          <div class="panel-header">
+            <span class="panel-title">&gt;&gt; EVENT_LOG</span>
+          </div>
+          <div class="panel-content">
+            <div class="log-entry">
+              <div class="log-timestamp">[2024-12-19 14:23:47 UTC]</div>
+              <span class="log-level info">INFO</span>
+              <div class="log-message">System initialization complete. All subsystems nominal.</div>
+            </div>
+            <div class="log-entry">
+              <div class="log-timestamp">[2024-12-19 14:24:12 UTC]</div>
+              <span class="log-level info">INFO</span>
+              <div class="log-message">Camera feeds established. 8/8 nodes reporting.</div>
+            </div>
+            <div class="log-entry">
+              <div class="log-timestamp">[2024-12-19 14:26:33 UTC]</div>
+              <span class="log-level warning">WARNING</span>
+              <div class="log-message">Unusual data pattern detected in Sector 4. Initiating deep scan.</div>
+            </div>
+            <div class="log-entry">
+              <div class="log-timestamp">[2024-12-19 14:27:01 UTC]</div>
+              <span class="log-level info">INFO</span>
+              <div class="log-message">Deep scan complete. Pattern classified as benign.</div>
+            </div>
+            <div class="log-entry">
+              <div class="log-timestamp">[2024-12-19 14:30:15 UTC]</div>
+              <span class="log-level info">INFO</span>
+              <div class="log-message">New data packet received. PKT_0142 assigned.</div>
+            </div>
+            <div class="log-entry">
+              <div class="log-timestamp">[2024-12-19 14:31:08 UTC]</div>
+              <span class="log-level info">INFO</span>
+              <div class="log-message">Proof-of-work verification successful. Nonce: 0x4a7f92b3</div>
+            </div>
+            <div class="log-entry">
+              <div class="log-timestamp">[2024-12-19 14:35:44 UTC]</div>
+              <span class="log-level warning">WARNING</span>
+              <div class="log-message">Network latency spike detected. Response time: 342ms (threshold: 200ms)</div>
+            </div>
+            <div class="log-entry">
+              <div class="log-timestamp">[2024-12-19 14:36:02 UTC]</div>
+              <span class="log-level info">INFO</span>
+              <div class="log-message">Network performance restored. Latency: 87ms</div>
+            </div>
+            <div class="log-entry">
+              <div class="log-timestamp">[2024-12-19 14:40:19 UTC]</div>
+              <span class="log-level critical">CRITICAL</span>
+              <div class="log-message">Unauthorized access attempt detected from IP 203.0.113.45. Access denied.</div>
+            </div>
+            <div class="log-entry">
+              <div class="log-timestamp">[2024-12-19 14:41:33 UTC]</div>
+              <span class="log-level info">INFO</span>
+              <div class="log-message">Firewall rules updated. Threat vector blocked.</div>
+            </div>
+            <div class="log-entry">
+              <div class="log-timestamp">[2024-12-19 14:45:07 UTC]</div>
+              <span class="log-level info">INFO</span>
+              <div class="log-message">Routine system health check initiated.</div>
+            </div>
+            <div class="log-entry">
+              <div class="log-timestamp">[2024-12-19 14:45:22 UTC]</div>
+              <span class="log-level info">INFO</span>
+              <div class="log-message">Health check complete. All systems operational.</div>
+            </div>
+          </div>
+        </div>
+
+        <footer id="site-footer">
+          <div class="footer-bar">
+            <span>MATRIX_v2.1.4</span>
+            <span>|</span>
+            <a href="/">TERMINAL</a>
+            <span>|</span>
+            <a href="/manual.html">MANUAL</a>
+            <span>|</span>
+            <a href="/protocols.html">PROTOCOLS</a>
+            <span>|</span>
+            <a href="/logs">LOG</a>
+          </div>
+        </footer>
+      </main>
+    </div>
+
+    <script src="/crt-effect.js"></script>
+    <script>
+      // Update metrics dynamically
+      async function updateMetrics() {
+        try {
+          const notes = await fetch('/api/notes').then(r => r.json());
+          document.getElementById('packet-count').textContent = notes.length;
+          
+          // Random fluctuations for demo
+          document.getElementById('connection-count').textContent = Math.floor(Math.random() * 5) + 1;
+          document.getElementById('cpu-usage').textContent = (15 + Math.random() * 25).toFixed(0) + '%';
+          
+          const uptime = Math.floor(Date.now() / 1000 / 3600);
+          document.getElementById('uptime-hours').textContent = uptime;
+        } catch (e) {}
+      }
+      
+      updateMetrics();
+      setInterval(updateMetrics, 5000);
+    </script>
+  </body>
+</html>

@@ -2,21 +2,20 @@ const canvas = document.getElementById("canvas");
 const newNoteBtn = document.getElementById("new-note-btn");
 const noteTemplate = document.getElementById("note-template");
 const bigClock = document.getElementById("big-clock");
+const bigClock2 = document.getElementById("big-clock-2");
 const generationCountdown = document.getElementById("generation-countdown");
 const lastSummary = document.getElementById("last-summary");
 const historyList = document.getElementById("history-list");
 
-const NOTE_PALETTE = [
-  "rgba(250, 248, 243, 0.95)", // cream
-  "rgba(253, 232, 219, 0.95)", // peach light
-  "rgba(244, 194, 167, 0.95)", // peach
-  "rgba(200, 184, 219, 0.95)", // lavender
-  "rgba(212, 255, 212, 0.95)", // mint
-  "rgba(255, 245, 220, 0.95)", // warm cream
+const NOTE_COLORS = [
+  "var(--concrete)",
+  "var(--concrete-light)",
+  "#2d2d2d",
+  "#323232",
 ];
 
 function pickRandomColor() {
-  return NOTE_PALETTE[Math.floor(Math.random() * NOTE_PALETTE.length)];
+  return NOTE_COLORS[Math.floor(Math.random() * NOTE_COLORS.length)];
 }
 
 let toastTimer = null;
@@ -28,7 +27,6 @@ function showToast(message) {
     document.body.appendChild(el);
   }
   el.textContent = message;
-  // force reflow so transitions retrigger
   void el.offsetWidth;
   el.classList.add("show");
   if (toastTimer) clearTimeout(toastTimer);
@@ -52,6 +50,7 @@ function createNoteElement(note) {
   const noteEl = fragment.querySelector(".note");
   const textarea = fragment.querySelector("textarea");
   const authorEl = fragment.querySelector(".note-author");
+  const noteId = fragment.querySelector(".note-id");
   const deleteBtn = fragment.querySelector(".note-delete");
 
   noteEl.dataset.id = note.id;
@@ -59,25 +58,30 @@ function createNoteElement(note) {
   noteEl.style.top = `${note.y}px`;
   noteEl.style.background = note.color || pickRandomColor();
   textarea.value = note.text || "";
-  if (authorEl) authorEl.textContent = note.author_label ? `${note.author_label}` : "";
+  
+  if (noteId) {
+    noteId.textContent = `PKT_${String(note.id).padStart(4, '0')}`;
+  }
+  
+  if (authorEl) {
+    authorEl.textContent = note.author_label ? `SRC:${note.author_label}` : "";
+  }
 
   if (note.is_owner) {
-    // Show delete button only to the creator
     deleteBtn.style.display = "flex";
     deleteBtn.addEventListener("click", async () => {
-      if (!confirm("Remove this note from the garden?")) return;
+      if (!confirm("PURGE THIS DATA PACKET?")) return;
       try {
         const resp = await fetch(`/api/notes/${note.id}`, { method: "DELETE" });
         if (!resp.ok) throw new Error(`${resp.status}`);
         noteEl.remove();
-        showToast("Note removed from garden");
-        if (window.gardenAudio) window.gardenAudio.noteDeleted();
+        showToast("PACKET_PURGED");
+        if (window.industrialAudio) window.industrialAudio.noteDeleted();
       } catch (_err) {
-        showToast("Could not remove that note.");
+        showToast("PURGE_FAILED");
       }
     });
   } else {
-    // Non-owners: read-only text; drag still works
     textarea.readOnly = true;
   }
 
@@ -94,7 +98,7 @@ function createNoteElement(note) {
         body: JSON.stringify({ text: textarea.value }),
       });
     } catch (_error) {
-      alert("Could not save that note right now.");
+      alert("TRANSMISSION_UPDATE_FAILED");
     }
   });
 
@@ -109,7 +113,7 @@ async function loadHistory() {
     if (!commits.length) {
       const li = document.createElement("li");
       li.className = "history-empty";
-      li.textContent = "No growth records yet";
+      li.textContent = "// NO_ENTRIES_FOUND";
       historyList.appendChild(li);
       return;
     }
@@ -128,7 +132,7 @@ async function loadHistory() {
       historyList.appendChild(li);
     }
   } catch (_err) {
-    historyList.innerHTML = `<li class="history-empty">Could not load growth history</li>`;
+    historyList.innerHTML = `<li class="history-empty">LOG_ACCESS_DENIED</li>`;
   }
 }
 
@@ -143,7 +147,7 @@ async function loadNotes() {
     const notes = await requestJson("/api/notes");
     notes.forEach((note) => canvas.appendChild(createNoteElement(note)));
   } catch (_error) {
-    alert("Could not load notes from the garden.");
+    alert("DATA_RETRIEVAL_FAILED");
   }
 }
 
@@ -162,8 +166,9 @@ function formatCountdown(totalSeconds) {
 }
 
 function updateBigClock() {
-  if (!bigClock) return;
-  bigClock.textContent = formatClock(new Date());
+  const time = formatClock(new Date());
+  if (bigClock) bigClock.textContent = time;
+  if (bigClock2) bigClock2.textContent = time;
 }
 
 function updateGenerationCountdown() {
@@ -182,32 +187,26 @@ async function refreshWorkerStatus() {
     const status = await requestJson("/api/worker-status");
     nextRunEpochMs = typeof status.next_run_epoch === "number" ? status.next_run_epoch * 1000 : null;
     if (lastSummary) {
-      lastSummary.textContent = status.summary || "Waiting for the garden keeper's notes...";
+      lastSummary.textContent = status.summary || "AWAITING_OPERATOR_INPUT...";
     }
     updateGenerationCountdown();
 
-    // Detect cycle rollover: server cleared the board — reload notes + history.
     if (status.cycle_id && status.cycle_id !== currentCycleId) {
       if (currentCycleId !== null) {
-        // A new cycle started while the user was on the page — flush stale notes.
         canvas.innerHTML = "";
         await loadNotes();
         loadHistory();
-        showToast("🌸 New bloom cycle — the garden has been refreshed!");
+        showToast("NEW_CYCLE_INITIATED");
       }
       currentCycleId = status.cycle_id;
     }
   } catch (_error) {
     if (lastSummary) {
-      lastSummary.textContent = "Could not fetch the current garden status.";
+      lastSummary.textContent = "STATUS_QUERY_FAILED";
     }
   }
 }
 
-/**
- * Solve proof-of-work off the main thread using a Web Worker.
- * Returns a Promise that resolves to the nonce string.
- */
 function solvePow(challenge, difficulty) {
   return new Promise((resolve, reject) => {
     const worker = new Worker("/pow-worker.js");
@@ -218,22 +217,18 @@ function solvePow(challenge, difficulty) {
 }
 
 async function createNewNote() {
-  const text = window.prompt("Plant your idea in the garden:", "");
+  const text = window.prompt("ENTER_DATA_TRANSMISSION:", "");
   if (text === null || text.trim() === "") return;
 
-  // Disable button and show working state while PoW runs
   newNoteBtn.disabled = true;
   const origLabel = newNoteBtn.innerHTML;
-  newNoteBtn.innerHTML = '<svg class="button-icon" viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="10"/></svg> Growing...';
+  newNoteBtn.innerHTML = '<span class="button-inner"><span class="button-symbol">⚠</span><span>PROCESSING...</span></span>';
+  
   try {
-    // 1. Get the current PoW challenge from the server
     const pow = await requestJson("/api/pow-challenge");
-
-    // 2. Solve it in a background Web Worker (non-blocking)
-    showToast("🌱 Preparing your seed...");
+    showToast("COMPUTING_PROOF_OF_WORK...");
     const nonce = await solvePow(pow.challenge, pow.difficulty_submit);
 
-    // 3. POST the note
     const note = await requestJson("/api/notes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -251,14 +246,14 @@ async function createNewNote() {
     noteEl.classList.add("just-added");
     canvas.appendChild(noteEl);
     noteEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    setTimeout(() => noteEl.classList.remove("just-added"), 1200);
+    setTimeout(() => noteEl.classList.remove("just-added"), 600);
     
-    const message = note.author_label ? `🌸 Planted as ${note.author_label}` : "🌸 Idea planted!";
+    const message = note.author_label ? `TRANSMISSION_LOGGED_AS_${note.author_label}` : "PACKET_TRANSMITTED";
     showToast(message);
     
-    if (window.gardenAudio) window.gardenAudio.noteCreated();
+    if (window.industrialAudio) window.industrialAudio.noteCreated();
   } catch (_error) {
-    alert("Could not plant your idea. Please try again.");
+    alert("TRANSMISSION_FAILED");
   } finally {
     newNoteBtn.disabled = false;
     newNoteBtn.innerHTML = origLabel;
@@ -275,7 +270,7 @@ canvas.addEventListener("drop", async (event) => {
     return;
   }
   const rect = canvas.getBoundingClientRect();
-  const x = Math.max(0, Math.round(event.clientX - rect.left - 110));
+  const x = Math.max(0, Math.round(event.clientX - rect.left - 120));
   const y = Math.max(0, Math.round(event.clientY - rect.top - 20));
   dragNote.style.left = `${x}px`;
   dragNote.style.top = `${y}px`;
@@ -289,26 +284,14 @@ canvas.addEventListener("drop", async (event) => {
       body: JSON.stringify({ x, y }),
     });
   } catch (_error) {
-    alert("Could not move that note right now.");
+    alert("RELOCATION_FAILED");
   }
 });
 
 newNoteBtn.addEventListener("click", createNewNote);
 
-// The manual cycle trigger is operator-only now; it lives on /logs?token=…
-// No public UI element for it.
-
-// Seed cycle_id before first status poll so a cycle already in progress
-// doesn't trigger a spurious board flush.
 requestJson("/api/cycle/current").then((c) => { currentCycleId = c.cycle_id || null; }).catch(() => {});
 
-/**
- * Populate the "previous cycle" preview section. Fetches the most recent cycle
- * metadata from /api/cycles/previous and renders it into the mandated DOM
- * anchors: #prev-cycle-summary, #prev-cycle-count, #prev-cycle-notes-list.
- * The chaos agent is required to keep these IDs; without them this function
- * silently no-ops.
- */
 async function loadPreviousCycle() {
   const section = document.getElementById("previous-cycle");
   const summaryEl = document.getElementById("prev-cycle-summary");
@@ -320,7 +303,6 @@ async function loadPreviousCycle() {
     if (!res.ok) return;
     const data = await res.json();
     if (!data || !data.handoff_id) {
-      // no previous cycle yet — keep hidden
       return;
     }
     const notes = Array.isArray(data.notes) ? data.notes : [];

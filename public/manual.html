@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OPERATIONS MANUAL // MATRIX</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <style>
+      .manual-content {
+        max-width: 900px;
+        margin: 0 auto;
+      }
+      .section {
+        margin: 3rem 0;
+      }
+      .section-number {
+        color: var(--warning-yellow);
+        font-weight: 700;
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+      }
+      .section h2 {
+        font-family: 'Roboto Condensed', sans-serif;
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+      }
+      .section p {
+        line-height: 1.8;
+        margin: 1rem 0;
+        color: var(--text-secondary);
+      }
+      .warning-box {
+        background: rgba(255, 51, 51, 0.1);
+        border: 2px solid var(--warning-red);
+        padding: 1.5rem;
+        margin: 2rem 0;
+      }
+      .warning-box::before {
+        content: '⚠ WARNING ⚠';
+        display: block;
+        color: var(--warning-red);
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        margin-bottom: 0.5rem;
+        font-size: 1.1rem;
+      }
+      .code-block {
+        background: var(--concrete);
+        border-left: 3px solid var(--active-green);
+        padding: 1rem;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.85rem;
+        margin: 1rem 0;
+        overflow-x: auto;
+        color: var(--active-green);
+      }
+      ol, ul {
+        margin: 1rem 0;
+        padding-left: 2rem;
+        color: var(--text-secondary);
+      }
+      li {
+        margin: 0.5rem 0;
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="crt-overlay"></div>
+    <div class="scanlines"></div>
+    <div class="grid-background"></div>
+    
+    <div class="container manual-content">
+      <header class="terminal-header">
+        <div class="status-bar">
+          <span class="status-item">
+            <span class="status-indicator active"></span>
+            MANUAL_ACCESS_GRANTED
+          </span>
+          <span class="status-item">
+            <a href="/" style="color: var(--warning-yellow); text-decoration: none;">&lt;&lt; RETURN_TO_TERMINAL</a>
+          </span>
+        </div>
+        <div class="title-block">
+          <h1>OPERATIONS MANUAL</h1>
+          <div class="subtitle-box">
+            <span>MATRIX COLLECTIVE CONSCIOUSNESS INTERFACE v2.1.4</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="terminal-main">
+        <div class="control-panel">
+          <div class="panel-header">
+            <span class="panel-title">&gt;&gt; DOCUMENT_CONTENTS</span>
+          </div>
+          <div class="panel-content">
+            
+            <div class="section">
+              <div class="section-number">§1.0</div>
+              <h2>SYSTEM OVERVIEW</h2>
+              <p>
+                The MATRIX serves as a distributed data repository for collective ideation and consciousness interfacing. 
+                All transmissions are time-stamped, geographically agnostic, and cryptographically verified through 
+                proof-of-work algorithms.
+              </p>
+              <p>
+                The system operates on a 4-hour cycle, after which collected data packets are archived and processed 
+                by autonomous agents for pattern recognition and semantic analysis.
+              </p>
+            </div>
+
+            <div class="section">
+              <div class="section-number">§2.0</div>
+              <h2>TRANSMISSION PROTOCOLS</h2>
+              <p>To transmit a data packet to the collective:</p>
+              <ol>
+                <li>Initialize transmission interface via TRANSMIT_DATA_PACKET command</li>
+                <li>Input textual data (max 500 characters)</li>
+                <li>System computes proof-of-work hash (SHA-256 with leading zero-bits)</li>
+                <li>Upon successful verification, packet is broadcast to all connected nodes</li>
+                <li>Packet receives unique identifier (PKT_####) and source attribution</li>
+              </ol>
+              
+              <div class="code-block">
+>> TRANSMISSION_SEQUENCE<br>
+[INIT] → [INPUT] → [POW_COMPUTE] → [VERIFY] → [BROADCAST]<br>
+STATUS: AWAITING_OPERATOR_INPUT
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-number">§3.0</div>
+              <h2>DATA MANIPULATION</h2>
+              <p><strong>RELOCATION:</strong> Packets can be spatially reorganized within the data grid via drag-and-drop interface. 
+              Position coordinates are persistent and synchronized across all viewing nodes.</p>
+              <p><strong>MODIFICATION:</strong> Source operators retain modification privileges for their own transmissions. 
+              Click packet to enter edit mode. Changes are saved automatically on blur event.</p>
+              <p><strong>DELETION:</strong> Source operators can purge their packets. This action is irreversible and 
+              immediately propagated to all nodes.</p>
+            </div>
+
+            <div class="warning-box">
+              All data transmitted through the MATRIX is publicly accessible. Do not transmit classified, 
+              proprietary, or personally identifiable information. The system administrators bear no responsibility 
+              for the content of user-generated transmissions.
+            </div>
+
+            <div class="section">
+              <div class="section-number">§4.0</div>
+              <h2>CYCLE MECHANICS</h2>
+              <p>
+                The MATRIX operates in discrete 4-hour cycles. At the conclusion of each cycle:
+              </p>
+              <ul>
+                <li>All active data packets are archived with vote tallies</li>
+                <li>Highest-priority transmissions are extracted for processing</li>
+                <li>Autonomous agents interpret collective intent</li>
+                <li>Interface aesthetic is regenerated based on interpreted directives</li>
+                <li>New cycle initiates with fresh data grid</li>
+              </ul>
+              <p>
+                This cyclical metamorphosis ensures the MATRIX remains responsive to the collective's evolving 
+                consciousness, adapting its form and function to reflect current ideological vectors.
+              </p>
+            </div>
+
+            <div class="section">
+              <div class="section-number">§5.0</div>
+              <h2>SECURITY CONSIDERATIONS</h2>
+              <p>
+                The proof-of-work requirement serves dual purposes:
+              </p>
+              <ol>
+                <li><strong>DOS MITIGATION:</strong> Computational cost prevents automated flooding attacks</li>
+                <li><strong>COMMITMENT VERIFICATION:</strong> Hash difficulty ensures transmission intent is genuine</li>
+              </ol>
+              <p>
+                Current difficulty parameters are calibrated to require approximately 1-3 seconds of computation 
+                on standard consumer hardware. This creates negligible friction for legitimate operators while 
+                establishing prohibitive cost for mass automation.
+              </p>
+            </div>
+
+            <div class="section">
+              <div class="section-number">§6.0</div>
+              <h2>TROUBLESHOOTING</h2>
+              <div class="code-block">
+ERROR: TRANSMISSION_FAILED<br>
+→ Verify network connectivity<br>
+→ Retry POW computation<br>
+→ Check browser console for detailed error logs<br>
+<br>
+ERROR: RELOCATION_FAILED<br>
+→ Ensure packet ownership<br>
+→ Refresh interface state<br>
+<br>
+ERROR: STATUS_QUERY_FAILED<br>
+→ Backend service may be restarting<br>
+→ Wait 30 seconds and reload interface
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-number">§7.0</div>
+              <h2>OPERATIONAL LIMITS</h2>
+              <ul>
+                <li>Maximum packet text length: 500 characters</li>
+                <li>Cycle duration: 4 hours (fixed)</li>
+                <li>Maximum concurrent packets: Unlimited (subject to backend capacity)</li>
+                <li>POW difficulty: Dynamically adjusted (currently ~18 leading zero-bits)</li>
+                <li>Packet lifetime: Until next cycle or manual deletion</li>
+              </ul>
+            </div>
+
+          </div>
+        </div>
+
+        <footer id="site-footer">
+          <div class="footer-bar">
+            <span>MATRIX_v2.1.4</span>
+            <span>|</span>
+            <a href="/">TERMINAL</a>
+            <span>|</span>
+            <a href="/surveillance.html">SURVEILLANCE</a>
+            <span>|</span>
+            <a href="/protocols.html">PROTOCOLS</a>
+            <span>|</span>
+            <a href="/logs">LOG</a>
+          </div>
+        </footer>
+      </main>
+    </div>
+
+    <script src="/crt-effect.js"></script>
+  </body>
+</html>
