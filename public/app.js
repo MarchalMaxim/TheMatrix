@@ -7,8 +7,8 @@ const lastSummary = document.getElementById("last-summary");
 const historyList = document.getElementById("history-list");
 
 const NOTE_PALETTE = [
-  "#ffe98f", "#ffd1dc", "#c8f7c5", "#c5e3ff", "#ffd9b3",
-  "#e0c8ff", "#fff5b3", "#b3f0e8", "#ffc8c8", "#d9f0a3",
+  "#1a2a1a", "#0f1f0f", "#152515", "#0d1d0d", "#1f2f1f",
+  "#0a1a0a", "#182818", "#0e1e0e", "#1d2d1d", "#0b1b0b",
 ];
 
 function pickRandomColor() {
@@ -53,9 +53,9 @@ function createNoteElement(note) {
   noteEl.dataset.id = note.id;
   noteEl.style.left = `${note.x}px`;
   noteEl.style.top = `${note.y}px`;
-  noteEl.style.background = note.color || "#ffe98f";
+  noteEl.style.background = note.color || "#1a2a1a";
   textarea.value = note.text || "";
-  if (authorEl) authorEl.textContent = note.author_label ? `— ${note.author_label}` : "";
+  if (authorEl) authorEl.textContent = note.author_label ? `${note.author_label}` : "";
 
   if (note.is_owner) {
     // Show delete button only to the creator
@@ -104,7 +104,7 @@ async function loadHistory() {
     if (!commits.length) {
       const li = document.createElement("li");
       li.className = "history-empty";
-      li.textContent = "No cycle commits yet. The site hasn't been rewritten by the agent yet.";
+      li.innerHTML = '<span class="gray">// No commit records found</span>';
       historyList.appendChild(li);
       return;
     }
@@ -123,12 +123,12 @@ async function loadHistory() {
       historyList.appendChild(li);
     }
   } catch (_err) {
-    historyList.innerHTML = `<li class="history-empty">Could not load history right now.</li>`;
+    historyList.innerHTML = `<li class="history-empty"><span class="gray">// Could not load history</span></li>`;
   }
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({
+  return String(s).replace(/[&<>\"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
   })[c]);
 }
@@ -157,10 +157,12 @@ function formatCountdown(totalSeconds) {
 }
 
 function updateBigClock() {
+  if (!bigClock) return;
   bigClock.textContent = formatClock(new Date());
 }
 
 function updateGenerationCountdown() {
+  if (!generationCountdown) return;
   if (typeof nextRunEpochMs !== "number") {
     generationCountdown.textContent = "4:00:00";
     return;
@@ -174,7 +176,9 @@ async function refreshWorkerStatus() {
   try {
     const status = await requestJson("/api/worker-status");
     nextRunEpochMs = typeof status.next_run_epoch === "number" ? status.next_run_epoch * 1000 : null;
-    lastSummary.textContent = status.summary || "Waiting for the first generation briefing...";
+    if (lastSummary) {
+      lastSummary.textContent = status.summary || "Waiting for the first generation briefing...";
+    }
     updateGenerationCountdown();
 
     // Detect cycle rollover: server cleared the board — reload notes + history.
@@ -189,7 +193,9 @@ async function refreshWorkerStatus() {
       currentCycleId = status.cycle_id;
     }
   } catch (_error) {
-    lastSummary.textContent = "Could not fetch the current generation status.";
+    if (lastSummary) {
+      lastSummary.textContent = "Could not fetch the current generation status.";
+    }
   }
 }
 
@@ -207,13 +213,13 @@ function solvePow(challenge, difficulty) {
 }
 
 async function createNewNote() {
-  const text = window.prompt("What's your tiny whimsical idea?", "");
+  const text = window.prompt("Enter your data transmission:", "");
   if (text === null || text.trim() === "") return;
 
   // Disable button and show working state while PoW runs
   newNoteBtn.disabled = true;
-  const origLabel = newNoteBtn.textContent;
-  newNoteBtn.textContent = "⏳ Working…";
+  const origLabel = newNoteBtn.innerHTML;
+  newNoteBtn.innerHTML = '<span class="btn-bracket">[</span><span class="btn-text">⏳ PROCESSING...</span><span class="btn-bracket">]</span>';
   try {
     // 1. Get the current PoW challenge from the server
     const pow = await requestJson("/api/pow-challenge");
@@ -230,8 +236,8 @@ async function createNewNote() {
         text: text.trim(),
         pow: nonce,
         challenge: pow.challenge,
-        x: 30 + Math.floor(Math.random() * 260),
-        y: 20 + Math.floor(Math.random() * 200),
+        x: 30 + Math.floor(Math.random() * 300),
+        y: 50 + Math.floor(Math.random() * 250),
         color: pickRandomColor(),
       }),
     });
@@ -241,12 +247,12 @@ async function createNewNote() {
     canvas.appendChild(noteEl);
     noteEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
     setTimeout(() => noteEl.classList.remove("just-added"), 1200);
-    showToast(note.author_label ? `Posted as ${note.author_label}` : "Post-it added");
+    showToast(note.author_label ? `> Posted as ${note.author_label}` : "> Post-it added");
   } catch (_error) {
     alert("Could not create a new post-it. Please try again.");
   } finally {
     newNoteBtn.disabled = false;
-    newNoteBtn.textContent = origLabel;
+    newNoteBtn.innerHTML = origLabel;
   }
 }
 
@@ -319,7 +325,7 @@ async function loadPreviousCycle() {
       const li = document.createElement("li");
       const v = document.createElement("span");
       v.className = "votes";
-      v.textContent = `(${n.votes || 0})`;
+      v.textContent = `[${n.votes || 0}]`;
       const t = document.createElement("span");
       t.textContent = " " + (n.text || "");
       li.appendChild(v);

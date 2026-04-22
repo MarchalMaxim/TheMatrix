@@ -3,162 +3,187 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Random SVG Art Gallery • TheMatrix</title>
+    <title>TheMatrix :: SVG_VAULT</title>
+    <link rel="stylesheet" href="/styles.css" />
     <link rel="stylesheet" href="/gallery.css" />
   </head>
   <body>
-    <header class="gallery-header">
-      <h1 class="gallery-title">✨ RANDOM SVG ART GALLERY ✨</h1>
-      <p class="gallery-subtitle">Generative Art from the Digital Cosmos</p>
-      <nav class="gallery-nav">
-        <a href="/index.html" class="nav-link">← Back to Matrix</a>
-        <button id="generate-btn" class="nav-link generate-btn">Generate New Art</button>
-      </nav>
-    </header>
+    <canvas id="matrix-rain" aria-hidden="true"></canvas>
+    
+    <div class="terminal-container">
+      <header class="gallery-header">
+        <div class="ascii-border">
+╔═══════════════════════════════════════════════════════════════════════════╗
+║            S V G   V A U L T   ::   G E N E R A T I V E   A R T           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+        </div>
+        <p class="gallery-subtitle">
+          <span class="gray">//</span> 
+          <span class="green">Vectorized hallucinations from the digital unconscious</span> 
+          <span class="gray">//</span>
+        </p>
+        <nav class="gallery-nav">
+          <a href="/index.html" class="nav-link">[&lt;&lt; MAIN_TERMINAL]</a>
+          <button id="generate-btn" class="terminal-btn generate-btn">
+            <span class="btn-bracket">[</span>
+            <span class="btn-text">GENERATE_NEW_ART</span>
+            <span class="btn-bracket">]</span>
+          </button>
+        </nav>
+      </header>
 
-    <main class="gallery-grid">
-      <!-- SVG Art pieces will be inserted here -->
-      <div class="art-piece">
-        <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" style="stop-color:#ff1493;stop-opacity:1" />
-              <stop offset="100%" style="stop-color:#00ffff;stop-opacity:1" />
-            </linearGradient>
-          </defs>
-          <circle cx="150" cy="150" r="100" fill="url(#grad1)" />
-          <circle cx="150" cy="150" r="80" fill="none" stroke="#ffd700" stroke-width="3" />
-          <circle cx="150" cy="150" r="60" fill="none" stroke="#ff69b4" stroke-width="2" />
-          <circle cx="150" cy="150" r="40" fill="none" stroke="#00ff00" stroke-width="2" />
-          <circle cx="150" cy="150" r="20" fill="#ffffff" />
-        </svg>
-        <p class="art-caption">Cosmic Circles</p>
-      </div>
+      <main class="gallery-grid">
+        <!-- Pre-made SVG Art pieces -->
+        <div class="art-piece">
+          <div class="art-frame">
+            <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#00ff41;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#00ffff;stop-opacity:1" />
+                </linearGradient>
+              </defs>
+              <rect x="0" y="0" width="300" height="300" fill="#0a0e0a" />
+              <circle cx="150" cy="150" r="100" fill="none" stroke="url(#grad1)" stroke-width="3" />
+              <circle cx="150" cy="150" r="80" fill="none" stroke="#00ff41" stroke-width="2" />
+              <circle cx="150" cy="150" r="60" fill="none" stroke="#00ffff" stroke-width="2" />
+              <circle cx="150" cy="150" r="40" fill="none" stroke="#ffff00" stroke-width="1" />
+              <circle cx="150" cy="150" r="20" fill="#00ff41" />
+            </svg>
+          </div>
+          <p class="art-caption">QUANTUM_RINGS</p>
+        </div>
 
-      <div class="art-piece">
-        <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <radialGradient id="grad2">
-              <stop offset="0%" style="stop-color:#ffd700;stop-opacity:1" />
-              <stop offset="100%" style="stop-color:#ff1493;stop-opacity:0.3" />
-            </radialGradient>
-          </defs>
-          <rect x="0" y="0" width="300" height="300" fill="#000033" />
-          <polygon points="150,50 200,150 150,250 100,150" fill="url(#grad2)" />
-          <polygon points="150,80 180,150 150,220 120,150" fill="none" stroke="#00ffff" stroke-width="2" />
-          <circle cx="150" cy="150" r="5" fill="#ffffff" />
-        </svg>
-        <p class="art-caption">Diamond Dreams</p>
-      </div>
+        <div class="art-piece">
+          <div class="art-frame">
+            <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+              <rect x="0" y="0" width="300" height="300" fill="#0a0e0a" />
+              <polygon points="150,50 200,150 150,250 100,150" fill="none" stroke="#00ff41" stroke-width="3" />
+              <polygon points="150,80 180,150 150,220 120,150" fill="none" stroke="#00ffff" stroke-width="2" />
+              <polygon points="150,110 160,150 150,190 140,150" fill="#ffff00" />
+              <circle cx="150" cy="150" r="5" fill="#fff" />
+            </svg>
+          </div>
+          <p class="art-caption">DIAMOND_CORE</p>
+        </div>
 
-      <div class="art-piece">
-        <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
-          <rect x="0" y="0" width="300" height="300" fill="#1a1a2e" />
-          <rect x="50" y="50" width="200" height="200" fill="none" stroke="#ff00ff" stroke-width="4" transform="rotate(45 150 150)" />
-          <rect x="75" y="75" width="150" height="150" fill="none" stroke="#00ffff" stroke-width="3" transform="rotate(45 150 150)" />
-          <rect x="100" y="100" width="100" height="100" fill="none" stroke="#ffd700" stroke-width="2" transform="rotate(45 150 150)" />
-          <circle cx="150" cy="150" r="30" fill="#ff1493" />
-        </svg>
-        <p class="art-caption">Geometric Meditation</p>
-      </div>
+        <div class="art-piece">
+          <div class="art-frame">
+            <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+              <rect x="0" y="0" width="300" height="300" fill="#0a0e0a" />
+              <rect x="50" y="50" width="200" height="200" fill="none" stroke="#00ff41" stroke-width="4" transform="rotate(45 150 150)" />
+              <rect x="75" y="75" width="150" height="150" fill="none" stroke="#00ffff" stroke-width="3" transform="rotate(45 150 150)" />
+              <rect x="100" y="100" width="100" height="100" fill="none" stroke="#ffff00" stroke-width="2" transform="rotate(45 150 150)" />
+              <circle cx="150" cy="150" r="30" fill="#00ff41" opacity="0.5" />
+            </svg>
+          </div>
+          <p class="art-caption">GEOMETRIC_NEXUS</p>
+        </div>
 
-      <div class="art-piece">
-        <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" style="stop-color:#ff0066;stop-opacity:1" />
-              <stop offset="50%" style="stop-color:#ffd700;stop-opacity:1" />
-              <stop offset="100%" style="stop-color:#00ff00;stop-opacity:1" />
-            </linearGradient>
-          </defs>
-          <rect x="0" y="0" width="300" height="300" fill="#0a0a0a" />
-          <path d="M 50 150 Q 100 50, 150 150 T 250 150" fill="none" stroke="url(#grad3)" stroke-width="8" />
-          <path d="M 50 170 Q 100 70, 150 170 T 250 170" fill="none" stroke="#ff69b4" stroke-width="4" />
-          <path d="M 50 190 Q 100 90, 150 190 T 250 190" fill="none" stroke="#00ffff" stroke-width="2" />
-        </svg>
-        <p class="art-caption">Wave Function</p>
-      </div>
+        <div class="art-piece">
+          <div class="art-frame">
+            <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" style="stop-color:#00ff41;stop-opacity:1" />
+                  <stop offset="50%" style="stop-color:#00ffff;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#ffff00;stop-opacity:1" />
+                </linearGradient>
+              </defs>
+              <rect x="0" y="0" width="300" height="300" fill="#0a0e0a" />
+              <path d="M 50 150 Q 100 50, 150 150 T 250 150" fill="none" stroke="url(#grad3)" stroke-width="8" />
+              <path d="M 50 170 Q 100 70, 150 170 T 250 170" fill="none" stroke="#00ff41" stroke-width="4" />
+              <path d="M 50 190 Q 100 90, 150 190 T 250 190" fill="none" stroke="#00ffff" stroke-width="2" />
+            </svg>
+          </div>
+          <p class="art-caption">WAVE_FUNCTION</p>
+        </div>
 
-      <div class="art-piece">
-        <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
-          <rect x="0" y="0" width="300" height="300" fill="#16213e" />
-          <polygon points="150,30 270,270 30,270" fill="none" stroke="#ff1493" stroke-width="4" />
-          <polygon points="150,60 240,240 60,240" fill="none" stroke="#00ffff" stroke-width="3" />
-          <polygon points="150,90 210,210 90,210" fill="none" stroke="#ffd700" stroke-width="2" />
-          <polygon points="150,120 180,180 120,180" fill="#ff00ff" />
-        </svg>
-        <p class="art-caption">Tri-Force Energy</p>
-      </div>
+        <div class="art-piece">
+          <div class="art-frame">
+            <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+              <rect x="0" y="0" width="300" height="300" fill="#0a0e0a" />
+              <polygon points="150,30 270,270 30,270" fill="none" stroke="#00ff41" stroke-width="4" />
+              <polygon points="150,60 240,240 60,240" fill="none" stroke="#00ffff" stroke-width="3" />
+              <polygon points="150,90 210,210 90,210" fill="none" stroke="#ffff00" stroke-width="2" />
+              <polygon points="150,120 180,180 120,180" fill="#00ff41" opacity="0.6" />
+            </svg>
+          </div>
+          <p class="art-caption">TRI_FORCE_VECTOR</p>
+        </div>
 
-      <div class="art-piece">
-        <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="pattern1" x="0" y="0" width="30" height="30" patternUnits="userSpaceOnUse">
-              <circle cx="15" cy="15" r="5" fill="#ff1493" />
-            </pattern>
-          </defs>
-          <rect x="0" y="0" width="300" height="300" fill="#000" />
-          <rect x="0" y="0" width="300" height="300" fill="url(#pattern1)" opacity="0.3" />
-          <circle cx="150" cy="150" r="80" fill="none" stroke="#00ffff" stroke-width="3" stroke-dasharray="10,5" />
-          <circle cx="150" cy="150" r="60" fill="none" stroke="#ffd700" stroke-width="2" />
-          <circle cx="150" cy="150" r="40" fill="#ff00ff" opacity="0.5" />
-        </svg>
-        <p class="art-caption">Dotted Universe</p>
-      </div>
+        <div class="art-piece">
+          <div class="art-frame">
+            <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <pattern id="grid1" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+                  <rect x="0" y="0" width="20" height="20" fill="none" stroke="#00ff41" stroke-width="0.5" opacity="0.3" />
+                </pattern>
+              </defs>
+              <rect x="0" y="0" width="300" height="300" fill="#0a0e0a" />
+              <rect x="0" y="0" width="300" height="300" fill="url(#grid1)" />
+              <circle cx="150" cy="150" r="80" fill="none" stroke="#00ffff" stroke-width="3" />
+              <circle cx="150" cy="150" r="60" fill="none" stroke="#ffff00" stroke-width="2" stroke-dasharray="5,5" />
+              <circle cx="150" cy="150" r="40" fill="#00ff41" opacity="0.3" />
+            </svg>
+          </div>
+          <p class="art-caption">GRID_COORDINATES</p>
+        </div>
 
-      <div class="art-piece">
-        <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
-          <rect x="0" y="0" width="300" height="300" fill="#1a1a2e" />
-          <line x1="150" y1="0" x2="150" y2="300" stroke="#ff1493" stroke-width="2" />
-          <line x1="0" y1="150" x2="300" y2="150" stroke="#ff1493" stroke-width="2" />
-          <line x1="0" y1="0" x2="300" y2="300" stroke="#00ffff" stroke-width="1" />
-          <line x1="300" y1="0" x2="0" y2="300" stroke="#00ffff" stroke-width="1" />
-          <circle cx="150" cy="150" r="70" fill="none" stroke="#ffd700" stroke-width="3" />
-          <circle cx="150" cy="150" r="40" fill="#ff00ff" />
-          <circle cx="150" cy="150" r="10" fill="#ffffff" />
-        </svg>
-        <p class="art-caption">Sacred Geometry</p>
-      </div>
+        <div class="art-piece">
+          <div class="art-frame">
+            <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+              <rect x="0" y="0" width="300" height="300" fill="#0a0e0a" />
+              <line x1="150" y1="0" x2="150" y2="300" stroke="#00ff41" stroke-width="2" opacity="0.5" />
+              <line x1="0" y1="150" x2="300" y2="150" stroke="#00ff41" stroke-width="2" opacity="0.5" />
+              <line x1="0" y1="0" x2="300" y2="300" stroke="#00ffff" stroke-width="1" opacity="0.3" />
+              <line x1="300" y1="0" x2="0" y2="300" stroke="#00ffff" stroke-width="1" opacity="0.3" />
+              <circle cx="150" cy="150" r="70" fill="none" stroke="#ffff00" stroke-width="3" />
+              <circle cx="150" cy="150" r="40" fill="#00ff41" opacity="0.4" />
+              <circle cx="150" cy="150" r="10" fill="#fff" />
+            </svg>
+          </div>
+          <p class="art-caption">SACRED_AXES</p>
+        </div>
 
-      <div class="art-piece">
-        <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="grad4" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" style="stop-color:#ff1493;stop-opacity:1" />
-              <stop offset="50%" style="stop-color:#ffd700;stop-opacity:1" />
-              <stop offset="100%" style="stop-color:#00ffff;stop-opacity:1" />
-            </linearGradient>
-          </defs>
-          <rect x="0" y="0" width="300" height="300" fill="#000" />
-          <rect x="50" y="50" width="40" height="200" fill="url(#grad4)" />
-          <rect x="100" y="80" width="40" height="170" fill="url(#grad4)" />
-          <rect x="150" y="60" width="40" height="190" fill="url(#grad4)" />
-          <rect x="200" y="90" width="40" height="160" fill="url(#grad4)" />
-        </svg>
-        <p class="art-caption">Rainbow Bars</p>
-      </div>
+        <div class="art-piece">
+          <div class="art-frame">
+            <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+              <rect x="0" y="0" width="300" height="300" fill="#0a0e0a" />
+              <path d="M 150 50 L 200 100 L 250 100 L 200 150 L 250 200 L 200 200 L 150 250 L 100 200 L 50 200 L 100 150 L 50 100 L 100 100 Z" 
+                    fill="none" stroke="#00ff41" stroke-width="3" />
+              <path d="M 150 80 L 180 120 L 220 120 L 190 150 L 220 180 L 180 180 L 150 220 L 120 180 L 80 180 L 110 150 L 80 120 L 120 120 Z" 
+                    fill="#00ffff" opacity="0.5" />
+              <circle cx="150" cy="150" r="20" fill="#ffff00" />
+            </svg>
+          </div>
+          <p class="art-caption">STAR_PROTOCOL</p>
+        </div>
 
-      <div class="art-piece">
-        <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
-          <rect x="0" y="0" width="300" height="300" fill="#0f0a05" />
-          <path d="M 150 50 L 200 100 L 250 100 L 200 150 L 250 200 L 200 200 L 150 250 L 100 200 L 50 200 L 100 150 L 50 100 L 100 100 Z" 
-                fill="none" stroke="#ffd700" stroke-width="3" />
-          <path d="M 150 80 L 180 120 L 220 120 L 190 150 L 220 180 L 180 180 L 150 220 L 120 180 L 80 180 L 110 150 L 80 120 L 120 120 Z" 
-                fill="#ff1493" opacity="0.7" />
-          <circle cx="150" cy="150" r="20" fill="#00ffff" />
-        </svg>
-        <p class="art-caption">Star Portal</p>
-      </div>
+        <div class="art-piece">
+          <div class="art-frame">
+            <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+              <rect x="0" y="0" width="300" height="300" fill="#0a0e0a" />
+              <rect x="50" y="50" width="40" height="200" fill="#00ff41" opacity="0.8" />
+              <rect x="100" y="80" width="40" height="170" fill="#00ffff" opacity="0.8" />
+              <rect x="150" y="60" width="40" height="190" fill="#ffff00" opacity="0.8" />
+              <rect x="200" y="90" width="40" height="160" fill="#00ff41" opacity="0.8" />
+            </svg>
+          </div>
+          <p class="art-caption">SIGNAL_BARS</p>
+        </div>
 
-      <!-- Dynamic art pieces will be added here -->
-      <div id="dynamic-art-container"></div>
-    </main>
+        <!-- Dynamic art pieces will be added here -->
+        <div id="dynamic-art-container"></div>
+      </main>
 
-    <footer class="gallery-footer">
-      <p>Generated by TheMatrix SVG Engine</p>
-      <a href="/index.html" class="footer-link">Return to Main Matrix</a>
-    </footer>
+      <footer class="gallery-footer">
+        <p class="gray">// Generated by TheMatrix SVG Engine v3.14 //</p>
+        <a href="/index.html" class="footer-link">[&lt;&lt; RETURN_TO_TERMINAL]</a>
+      </footer>
+    </div>
 
+    <script src="/matrix-rain.js"></script>
     <script src="/gallery.js"></script>
   </body>
 </html>

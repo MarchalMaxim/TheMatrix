@@ -3,128 +3,141 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TheMatrix • Dual Personality</title>
+    <title>TheMatrix :: TERMINAL_ACCESS_v3.14</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <!-- SPLIT SCREEN WRAPPER -->
-    <div class="split-container">
-      <!-- LEFT SIDE: BUSINESS & FORMAL -->
-      <div class="left-side">
-        <header class="business-header">
-          <h1 class="business-title">THE MATRIX</h1>
-          <p class="business-subtitle">Enterprise Ideation Platform</p>
-          
-          <section id="generation-attraction" class="business-section">
-            <p class="attraction-label">NEXT SYSTEM RECALIBRATION</p>
-            <p id="generation-countdown" class="countdown">4:00:00</p>
-            <div class="clock-container">
-              <p id="big-clock" class="big-clock">--:--:--</p>
+    <canvas id="matrix-rain" aria-hidden="true"></canvas>
+    
+    <div class="terminal-container">
+      <header class="terminal-header">
+        <div class="ascii-border">
+╔═══════════════════════════════════════════════════════════════════════════╗
+║  ▀█▀ █ █ █▀▀   █▄ ▄█ ▄▀█ ▀█▀ █▀█ █ ▀▄▀   ▀█▀ █▀▀ █▀█ █▄ ▄█ █ █▄ █ ▄▀█ █    ║
+║   █  █▀█ ██▄   █ ▀ █ █▀█  █  █▀▄ █ █ █    █  ██▄ █▀▄ █ ▀ █ █ █ ▀█ █▀█ █▄▄  ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+        </div>
+        <div class="system-status">
+          <span class="status-item">[<span class="green">ONLINE</span>]</span>
+          <span class="status-item">USER: <span class="cyan" id="user-id">GUEST_##########</span></span>
+          <span class="status-item">UPTIME: <span class="yellow" id="uptime">00:00:00</span></span>
+        </div>
+        <div class="nav-bar">
+          <a href="/manifesto.html" class="nav-link">[MANIFESTO]</a>
+          <a href="/gallery.html" class="nav-link">[SVG_VAULT]</a>
+          <a href="/terminal.html" class="nav-link">[LIVE_TERMINAL]</a>
+          <a href="/logs" id="logs-link" class="nav-link">[SYS_LOGS]</a>
+        </div>
+      </header>
+
+      <main class="terminal-main">
+        <section class="command-prompt">
+          <div class="prompt-line">
+            <span class="prompt-symbol">root@matrix:~$</span>
+            <span class="prompt-text">cat /sys/cycle/status.txt</span>
+          </div>
+          <div class="output-box">
+            <div class="output-line">
+              <span class="gray"># NEXT CYCLE TRIGGER IN:</span>
+              <span class="red" id="generation-countdown">4:00:00</span>
             </div>
-            <p id="last-summary" class="last-summary">Awaiting briefing from operations...</p>
-          </section>
-          
-          <div class="button-row">
-            <button id="new-note-btn" type="button" class="btn-primary business-btn">
-              <span class="btn-icon">+</span>
-              <span class="btn-text">NEW POST-IT</span>
-            </button>
+            <div class="output-line">
+              <span class="gray"># SYSTEM TIME:</span>
+              <span class="green" id="big-clock">--:--:--</span>
+            </div>
+            <div class="output-line">
+              <span class="gray"># LAST CYCLE SUMMARY:</span>
+            </div>
+            <div class="output-line indent" id="last-summary">
+              Awaiting data stream from operations server...
+            </div>
           </div>
+        </section>
 
-          <!-- BRIGHT COLOR DIVS AS REQUESTED -->
-          <div class="bright-divs-container">
-            <div class="bright-div bright-red"></div>
-            <div class="bright-div bright-orange"></div>
-            <div class="bright-div bright-yellow"></div>
+        <section class="action-panel">
+          <button id="new-note-btn" type="button" class="terminal-btn">
+            <span class="btn-bracket">[</span>
+            <span class="btn-text">+ NEW_POST-IT</span>
+            <span class="btn-bracket">]</span>
+          </button>
+          <div class="help-text">
+            <span class="gray">// Drag post-its to move • Click to edit your own • Delete button for owners</span>
           </div>
-        </header>
+        </section>
 
-        <main id="canvas" class="business-canvas" aria-label="Notes canvas">
-        </main>
-
-        <section id="history" class="business-history">
-          <h2 class="history-title">REVISION HISTORY</h2>
-          <ol id="history-list">
-            <li class="history-empty">No cycle commits yet.</li>
-          </ol>
+        <section id="canvas" class="notes-canvas" aria-label="Notes canvas">
+          <div class="canvas-label">
+            <span class="gray">// ACTIVE POST-IT NODES //</span>
+          </div>
         </section>
 
         <section id="previous-cycle" data-invariant="previous-cycle" hidden>
-          <h2>◆ PREVIOUS OPERATIONAL CYCLE</h2>
-          <p id="prev-cycle-summary"></p>
-          <details id="prev-cycle-details">
-            <summary>
-              <span id="prev-cycle-count">0</span>
-              <span> archived post-its</span>
-            </summary>
-            <ul id="prev-cycle-notes-list"></ul>
-          </details>
+          <div class="section-header">
+            <span class="bracket">╔═══</span>
+            <span class="title">PREVIOUS CYCLE ARCHIVE</span>
+            <span class="bracket">═══╗</span>
+          </div>
+          <div class="section-content">
+            <p id="prev-cycle-summary" class="cyan"></p>
+            <details id="prev-cycle-details">
+              <summary>
+                <span class="green">[</span>
+                <span id="prev-cycle-count">0</span>
+                <span class="green"> archived post-its]</span>
+                <span class="yellow"> &gt;&gt; click to expand</span>
+              </summary>
+              <ul id="prev-cycle-notes-list"></ul>
+            </details>
+          </div>
+          <div class="section-footer">
+            <span class="bracket">╚═════════════════════════════════════════════════════════╝</span>
+          </div>
         </section>
-      </div>
 
-      <!-- RIGHT SIDE: FESTIVE & COLORFUL -->
-      <div class="right-side">
-        <header class="festive-header">
-          <h1 class="festive-title">✨ THE MATRIX ✨</h1>
-          <p class="festive-subtitle">🎉 Where Ideas SPARKLE! 🎊</p>
-          
-          <div class="festive-decorations">
-            <div class="confetti"></div>
-            <div class="confetti"></div>
-            <div class="confetti"></div>
-            <div class="confetti"></div>
-            <div class="confetti"></div>
-            <div class="confetti"></div>
+        <section id="history" class="history-section">
+          <div class="section-header">
+            <span class="bracket">╔═══</span>
+            <span class="title">CYCLE COMMIT HISTORY</span>
+            <span class="bracket">═══╗</span>
           </div>
-
-          <section class="festive-section">
-            <p class="festive-label">✨ NEXT MAGICAL TRANSFORMATION ✨</p>
-            <p class="festive-countdown">🎪 Party Mode 🎪</p>
-            <div class="festive-features">
-              <div class="feature-badge">🌟 Creative</div>
-              <div class="feature-badge">💡 Inspired</div>
-              <div class="feature-badge">🎨 Colorful</div>
-            </div>
-          </section>
-
-          <!-- MORE BRIGHT COLOR DIVS -->
-          <div class="bright-divs-container festive-divs">
-            <div class="bright-div bright-pink"></div>
-            <div class="bright-div bright-cyan"></div>
-            <div class="bright-div bright-lime"></div>
-            <div class="bright-div bright-magenta"></div>
+          <ol id="history-list">
+            <li class="history-empty"><span class="gray">// No commit records found</span></li>
+          </ol>
+          <div class="section-footer">
+            <span class="bracket">╚═════════════════════════════════════════════════════════╝</span>
           </div>
+        </section>
+      </main>
 
-          <div class="navigation-panel">
-            <a href="/gallery.html" class="festive-link">🎨 RANDOM SVG ART GALLERY 🎨</a>
-            <a href="/logs" id="logs-link" class="festive-link">📊 System Logs</a>
-          </div>
-
-          <div class="party-zone">
-            <div class="spinning-star">⭐</div>
-            <div class="spinning-star">🌟</div>
-            <div class="spinning-star">✨</div>
-            <div class="party-text">POST YOUR IDEAS!</div>
-          </div>
-        </header>
-      </div>
+      <footer id="site-footer">
+        <div class="footer-content">
+          <span class="gray">TheMatrix Terminal v3.14.159 | </span>
+          <a href="/logs" class="footer-link">System Logs</a>
+          <span class="gray"> | </span>
+          <span class="green">Connection: SECURE</span>
+        </div>
+      </footer>
     </div>
-
-    <!-- SHARED FOOTER (OUTSIDE SPLIT) -->
-    <footer id="site-footer">
-      <a href="/logs" class="footer-logs-link">View System Logs</a>
-    </footer>
 
     <template id="note-template">
       <article class="note" draggable="true">
-        <div class="note-grip" aria-hidden="true">⋮⋮</div>
-        <button class="note-delete" title="Delete this note" aria-label="Delete">×</button>
-        <textarea maxlength="500" aria-label="Note content" placeholder="Your idea..."></textarea>
-        <div class="note-author" aria-label="Author"></div>
+        <div class="note-header">
+          <span class="note-corner">┌─</span>
+          <div class="note-grip" aria-hidden="true">═</div>
+          <span class="note-corner">─┐</span>
+          <button class="note-delete" title="Delete this note" aria-label="Delete">×</button>
+        </div>
+        <textarea maxlength="500" aria-label="Note content" placeholder="> enter_data..."></textarea>
+        <div class="note-footer">
+          <span class="note-corner">└─</span>
+          <div class="note-author" aria-label="Author"></div>
+          <span class="note-corner">─┘</span>
+        </div>
       </article>
     </template>
     
     <script src="/app.js"></script>
-    <script src="/hover-effects.js"></script>
+    <script src="/matrix-rain.js"></script>
+    <script src="/glitch.js"></script>
   </body>
 </html>
