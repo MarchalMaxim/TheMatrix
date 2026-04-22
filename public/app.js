@@ -7,8 +7,12 @@ const lastSummary = document.getElementById("last-summary");
 const historyList = document.getElementById("history-list");
 
 const NOTE_PALETTE = [
-  "#1a2a1a", "#0f1f0f", "#152515", "#0d1d0d", "#1f2f1f",
-  "#0a1a0a", "#182818", "#0e1e0e", "#1d2d1d", "#0b1b0b",
+  "rgba(250, 248, 243, 0.95)", // cream
+  "rgba(253, 232, 219, 0.95)", // peach light
+  "rgba(244, 194, 167, 0.95)", // peach
+  "rgba(200, 184, 219, 0.95)", // lavender
+  "rgba(212, 255, 212, 0.95)", // mint
+  "rgba(255, 245, 220, 0.95)", // warm cream
 ];
 
 function pickRandomColor() {
@@ -53,22 +57,23 @@ function createNoteElement(note) {
   noteEl.dataset.id = note.id;
   noteEl.style.left = `${note.x}px`;
   noteEl.style.top = `${note.y}px`;
-  noteEl.style.background = note.color || "#1a2a1a";
+  noteEl.style.background = note.color || pickRandomColor();
   textarea.value = note.text || "";
   if (authorEl) authorEl.textContent = note.author_label ? `${note.author_label}` : "";
 
   if (note.is_owner) {
     // Show delete button only to the creator
-    deleteBtn.style.display = "block";
+    deleteBtn.style.display = "flex";
     deleteBtn.addEventListener("click", async () => {
-      if (!confirm("Delete this post-it?")) return;
+      if (!confirm("Remove this note from the garden?")) return;
       try {
         const resp = await fetch(`/api/notes/${note.id}`, { method: "DELETE" });
         if (!resp.ok) throw new Error(`${resp.status}`);
         noteEl.remove();
-        showToast("Post-it deleted");
+        showToast("Note removed from garden");
+        if (window.gardenAudio) window.gardenAudio.noteDeleted();
       } catch (_err) {
-        showToast("Could not delete that post-it.");
+        showToast("Could not remove that note.");
       }
     });
   } else {
@@ -104,7 +109,7 @@ async function loadHistory() {
     if (!commits.length) {
       const li = document.createElement("li");
       li.className = "history-empty";
-      li.innerHTML = '<span class="gray">// No commit records found</span>';
+      li.textContent = "No growth records yet";
       historyList.appendChild(li);
       return;
     }
@@ -123,12 +128,12 @@ async function loadHistory() {
       historyList.appendChild(li);
     }
   } catch (_err) {
-    historyList.innerHTML = `<li class="history-empty"><span class="gray">// Could not load history</span></li>`;
+    historyList.innerHTML = `<li class="history-empty">Could not load growth history</li>`;
   }
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>\"']/g, (c) => ({
+  return String(s).replace(/[&<>\\"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
   })[c]);
 }
@@ -138,7 +143,7 @@ async function loadNotes() {
     const notes = await requestJson("/api/notes");
     notes.forEach((note) => canvas.appendChild(createNoteElement(note)));
   } catch (_error) {
-    alert("Could not load notes from the server.");
+    alert("Could not load notes from the garden.");
   }
 }
 
@@ -177,7 +182,7 @@ async function refreshWorkerStatus() {
     const status = await requestJson("/api/worker-status");
     nextRunEpochMs = typeof status.next_run_epoch === "number" ? status.next_run_epoch * 1000 : null;
     if (lastSummary) {
-      lastSummary.textContent = status.summary || "Waiting for the first generation briefing...";
+      lastSummary.textContent = status.summary || "Waiting for the garden keeper's notes...";
     }
     updateGenerationCountdown();
 
@@ -188,13 +193,13 @@ async function refreshWorkerStatus() {
         canvas.innerHTML = "";
         await loadNotes();
         loadHistory();
-        showToast("✨ New cycle — the board has been reset!");
+        showToast("🌸 New bloom cycle — the garden has been refreshed!");
       }
       currentCycleId = status.cycle_id;
     }
   } catch (_error) {
     if (lastSummary) {
-      lastSummary.textContent = "Could not fetch the current generation status.";
+      lastSummary.textContent = "Could not fetch the current garden status.";
     }
   }
 }
@@ -213,19 +218,19 @@ function solvePow(challenge, difficulty) {
 }
 
 async function createNewNote() {
-  const text = window.prompt("Enter your data transmission:", "");
+  const text = window.prompt("Plant your idea in the garden:", "");
   if (text === null || text.trim() === "") return;
 
   // Disable button and show working state while PoW runs
   newNoteBtn.disabled = true;
   const origLabel = newNoteBtn.innerHTML;
-  newNoteBtn.innerHTML = '<span class="btn-bracket">[</span><span class="btn-text">⏳ PROCESSING...</span><span class="btn-bracket">]</span>';
+  newNoteBtn.innerHTML = '<svg class="button-icon" viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="10"/></svg> Growing...';
   try {
     // 1. Get the current PoW challenge from the server
     const pow = await requestJson("/api/pow-challenge");
 
     // 2. Solve it in a background Web Worker (non-blocking)
-    showToast("⏳ Solving proof-of-work…");
+    showToast("🌱 Preparing your seed...");
     const nonce = await solvePow(pow.challenge, pow.difficulty_submit);
 
     // 3. POST the note
@@ -247,9 +252,13 @@ async function createNewNote() {
     canvas.appendChild(noteEl);
     noteEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
     setTimeout(() => noteEl.classList.remove("just-added"), 1200);
-    showToast(note.author_label ? `> Posted as ${note.author_label}` : "> Post-it added");
+    
+    const message = note.author_label ? `🌸 Planted as ${note.author_label}` : "🌸 Idea planted!";
+    showToast(message);
+    
+    if (window.gardenAudio) window.gardenAudio.noteCreated();
   } catch (_error) {
-    alert("Could not create a new post-it. Please try again.");
+    alert("Could not plant your idea. Please try again.");
   } finally {
     newNoteBtn.disabled = false;
     newNoteBtn.innerHTML = origLabel;
@@ -266,7 +275,7 @@ canvas.addEventListener("drop", async (event) => {
     return;
   }
   const rect = canvas.getBoundingClientRect();
-  const x = Math.max(0, Math.round(event.clientX - rect.left - 95));
+  const x = Math.max(0, Math.round(event.clientX - rect.left - 110));
   const y = Math.max(0, Math.round(event.clientY - rect.top - 20));
   dragNote.style.left = `${x}px`;
   dragNote.style.top = `${y}px`;
@@ -280,7 +289,7 @@ canvas.addEventListener("drop", async (event) => {
       body: JSON.stringify({ x, y }),
     });
   } catch (_error) {
-    alert("Could not move that post-it right now.");
+    alert("Could not move that note right now.");
   }
 });
 
@@ -325,7 +334,7 @@ async function loadPreviousCycle() {
       const li = document.createElement("li");
       const v = document.createElement("span");
       v.className = "votes";
-      v.textContent = `[${n.votes || 0}]`;
+      v.textContent = `${n.votes || 0}`;
       const t = document.createElement("span");
       t.textContent = " " + (n.text || "");
       li.appendChild(v);
