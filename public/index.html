@@ -3,165 +3,202 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MATRIX://CONTROL_TERMINAL</title>
+    <title>⁂ The Eternal Scriptorium ⁂</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="crt-overlay" id="crt-overlay"></div>
-    <div class="scanlines"></div>
+    <div class="parchment-texture"></div>
+    <canvas id="dust-canvas"></canvas>
     
-    <div class="grid-background"></div>
+    <div class="illuminated-border border-top"></div>
+    <div class="illuminated-border border-bottom"></div>
+    <div class="illuminated-border border-left"></div>
+    <div class="illuminated-border border-right"></div>
     
     <div class="container">
-      <header class="terminal-header">
-        <div class="status-bar">
-          <span class="status-item">
-            <span class="status-indicator active"></span>
-            SYSTEM_ONLINE
-          </span>
-          <span class="status-item">
-            <span class="status-indicator warning"></span>
-            SURVEILLANCE_ACTIVE
-          </span>
-          <span class="status-item">
-            <span class="status-indicator"></span>
-            UPTIME: <span id="big-clock">00:00:00</span>
-          </span>
+      <header class="manuscript-header">
+        <div class="flourish-top">
+          <svg viewBox="0 0 800 60" xmlns="http://www.w3.org/2000/svg">
+            <path d="M 0,30 Q 100,10 200,30 T 400,30 T 600,30 T 800,30" stroke="currentColor" fill="none" stroke-width="2"/>
+            <circle cx="400" cy="30" r="8" fill="currentColor"/>
+            <circle cx="200" cy="30" r="5" fill="currentColor"/>
+            <circle cx="600" cy="30" r="5" fill="currentColor"/>
+          </svg>
         </div>
         
         <div class="title-block">
-          <div class="title-grid">
-            <div class="grid-line"></div>
-            <div class="grid-line"></div>
-            <div class="grid-line"></div>
-          </div>
-          <h1>THE MATRIX</h1>
-          <div class="subtitle-box">
-            <span class="glitch-text" data-text="COLLECTIVE CONSCIOUSNESS INTERFACE">COLLECTIVE CONSCIOUSNESS INTERFACE</span>
-          </div>
+          <div class="drop-cap">T</div>
+          <h1>
+            <span class="title-the">he</span>
+            <span class="title-main">Eternal Scriptorium</span>
+          </h1>
+          <p class="subtitle">Liber Notarum Immortalis</p>
+          <div class="motto">⁂ Verba Volant, Scripta Manent ⁂</div>
         </div>
         
-        <nav class="command-nav">
-          <a href="/manual.html" class="nav-button">
-            <span class="button-bracket">[</span>OPERATIONS_MANUAL<span class="button-bracket">]</span>
+        <nav class="manuscript-nav">
+          <a href="/scriptorium.html" class="nav-link">
+            <span class="initial">S</span>criptorium
           </a>
-          <a href="/surveillance.html" class="nav-button">
-            <span class="button-bracket">[</span>SURVEILLANCE_LOG<span class="button-bracket">]</span>
+          <span class="nav-divider">✦</span>
+          <a href="/archive.html" class="nav-link">
+            <span class="initial">A</span>rchive
           </a>
-          <a href="/protocols.html" class="nav-button">
-            <span class="button-bracket">[</span>MAINTENANCE_PROTOCOLS<span class="button-bracket">]</span>
+          <span class="nav-divider">✦</span>
+          <a href="/codex.html" class="nav-link">
+            <span class="initial">C</span>odex
           </a>
         </nav>
       </header>
 
-      <main class="terminal-main">
-        <section class="control-panel">
-          <div class="panel-header">
-            <span class="panel-title">&gt;&gt; SYSTEM_STATUS</span>
-            <span class="panel-indicator"></span>
-          </div>
-          <div class="panel-content">
-            <div class="status-grid">
-              <div class="status-block">
-                <div class="status-label">SYSTEM_TIME</div>
-                <div class="status-value mono" id="big-clock-2">--:--:--</div>
-              </div>
-              <div class="status-block">
-                <div class="status-label">NEXT_CYCLE_ETA</div>
-                <div class="status-value warning-text mono" id="generation-countdown">4:00:00</div>
-              </div>
-              <div class="status-block full-span">
-                <div class="status-label">LAST_TRANSMISSION</div>
-                <div class="status-value" id="last-summary">AWAITING_OPERATOR_INPUT...</div>
-              </div>
+      <main class="manuscript-main">
+        <section class="illuminated-panel">
+          <div class="panel-ornament panel-ornament-tl"></div>
+          <div class="panel-ornament panel-ornament-tr"></div>
+          <div class="panel-ornament panel-ornament-bl"></div>
+          <div class="panel-ornament panel-ornament-br"></div>
+          
+          <h2 class="panel-heading">
+            <span class="versal">T</span>empus Fugit
+          </h2>
+          
+          <div class="time-display">
+            <div class="time-item">
+              <div class="time-label">Hora Præsens</div>
+              <div class="time-value" id="big-clock">00:00:00</div>
             </div>
+            <div class="time-divider">◆</div>
+            <div class="time-item">
+              <div class="time-label">Cyclus Proximus</div>
+              <div class="time-value glow-text" id="generation-countdown">4:00:00</div>
+            </div>
+          </div>
+          
+          <div class="last-cycle-box">
+            <div class="box-label">Dictum Ultimum:</div>
+            <p class="box-content" id="last-summary">Silentium regnat in hac nocte...</p>
           </div>
         </section>
 
-        <section class="control-panel">
-          <div class="panel-header">
-            <span class="panel-title">&gt;&gt; INPUT_INTERFACE</span>
-            <span class="panel-indicator active"></span>
-          </div>
-          <div class="panel-content center">
-            <button id="new-note-btn" type="button" class="command-button">
-              <span class="button-inner">
-                <span class="button-symbol">+</span>
-                <span>TRANSMIT_DATA_PACKET</span>
-              </span>
+        <section class="illuminated-panel create-panel">
+          <div class="panel-ornament panel-ornament-tl"></div>
+          <div class="panel-ornament panel-ornament-tr"></div>
+          <div class="panel-ornament panel-ornament-bl"></div>
+          <div class="panel-ornament panel-ornament-br"></div>
+          
+          <h2 class="panel-heading">
+            <span class="versal">S</span>cribe Novum
+          </h2>
+          
+          <div class="create-content">
+            <button id="new-note-btn" type="button" class="manuscript-button">
+              <span class="button-flourish">❦</span>
+              <span class="button-text">Inscribe Chartam</span>
+              <span class="button-flourish">❦</span>
             </button>
-            <p class="help-text">
-              // DRAG_PACKETS_TO_RELOCATE // CLICK_TO_MODIFY_OWN_TRANSMISSIONS // SYSTEM_ACCEPTS_TEXT_INPUT_ONLY
+            
+            <p class="instruction-text">
+              ※ Trahe chartas ad relocandum ※ Clica ad emendandum ※ Textus solum acceptatur ※
             </p>
           </div>
         </section>
 
-        <section class="radar-section">
-          <canvas id="radar-canvas" width="200" height="200"></canvas>
-          <div class="radar-label">SECTOR_SCAN</div>
-        </section>
-
-        <section id="canvas" class="data-grid" aria-label="Data packets">
-          <div class="grid-corner top-left"></div>
-          <div class="grid-corner top-right"></div>
-          <div class="grid-corner bottom-left"></div>
-          <div class="grid-corner bottom-right"></div>
-        </section>
-
-        <section id="previous-cycle" data-invariant="previous-cycle" class="control-panel" hidden>
-          <div class="panel-header">
-            <span class="panel-title">&gt;&gt; PREVIOUS_CYCLE_DATA</span>
-            <span class="panel-indicator"></span>
+        <section id="canvas" class="parchment-collection" aria-label="Manuscript notes">
+          <div class="collection-corner corner-tl">
+            <svg width="60" height="60" viewBox="0 0 60 60">
+              <path d="M 0,20 Q 10,10 20,0 M 0,40 Q 20,20 40,0 M 0,60 Q 30,30 60,0" stroke="currentColor" fill="none" stroke-width="1.5"/>
+            </svg>
           </div>
-          <div class="panel-content">
+          <div class="collection-corner corner-tr">
+            <svg width="60" height="60" viewBox="0 0 60 60">
+              <path d="M 60,20 Q 50,10 40,0 M 60,40 Q 40,20 20,0 M 60,60 Q 30,30 0,0" stroke="currentColor" fill="none" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <div class="collection-corner corner-bl">
+            <svg width="60" height="60" viewBox="0 0 60 60">
+              <path d="M 0,40 Q 10,50 20,60 M 0,20 Q 20,40 40,60 M 0,0 Q 30,30 60,60" stroke="currentColor" fill="none" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <div class="collection-corner corner-br">
+            <svg width="60" height="60" viewBox="0 0 60 60">
+              <path d="M 60,40 Q 50,50 40,60 M 60,20 Q 40,40 20,60 M 60,0 Q 30,30 0,60" stroke="currentColor" fill="none" stroke-width="1.5"/>
+            </svg>
+          </div>
+        </section>
+
+        <section id="previous-cycle" data-invariant="previous-cycle" class="illuminated-panel" hidden>
+          <div class="panel-ornament panel-ornament-tl"></div>
+          <div class="panel-ornament panel-ornament-tr"></div>
+          <div class="panel-ornament panel-ornament-bl"></div>
+          <div class="panel-ornament panel-ornament-br"></div>
+          
+          <h2 class="panel-heading">
+            <span class="versal">C</span>yclus Præteritus
+          </h2>
+          
+          <div class="cycle-content">
             <p id="prev-cycle-summary" class="cycle-summary"></p>
             <details id="prev-cycle-details" class="cycle-details">
               <summary>
-                <span class="summary-bracket">[</span>
-                <span id="prev-cycle-count">0</span> ARCHIVED_TRANSMISSIONS
-                <span class="summary-bracket">]</span>
-                <span class="chevron">▼</span>
+                <span class="detail-bracket">⟨</span>
+                <span id="prev-cycle-count">0</span>
+                <span> Chartæ Archivatæ</span>
+                <span class="detail-bracket">⟩</span>
               </summary>
-              <ul id="prev-cycle-notes-list" class="prev-notes-list"></ul>
+              <ul id="prev-cycle-notes-list" class="archived-notes"></ul>
             </details>
           </div>
         </section>
 
-        <section id="history" class="control-panel">
-          <div class="panel-header">
-            <span class="panel-title">&gt;&gt; COMMIT_LOG</span>
-            <span class="panel-indicator"></span>
-          </div>
-          <div class="panel-content">
+        <section id="history" class="illuminated-panel">
+          <div class="panel-ornament panel-ornament-tl"></div>
+          <div class="panel-ornament panel-ornament-tr"></div>
+          <div class="panel-ornament panel-ornament-bl"></div>
+          <div class="panel-ornament panel-ornament-br"></div>
+          
+          <h2 class="panel-heading">
+            <span class="versal">C</span>hronicon
+          </h2>
+          
+          <div class="chronicon-content">
             <ol id="history-list" class="history-list">
-              <li class="history-empty">// NO_ENTRIES_FOUND</li>
+              <li class="history-empty">⁓ Nullum invenitur ⁓</li>
             </ol>
           </div>
         </section>
       </main>
 
       <footer id="site-footer">
-        <div class="footer-bar">
-          <span>MATRIX_v2.1.4</span>
-          <span>|</span>
-          <a href="/logs" id="logs-link">ACCESS_LOG</a>
-          <span>|</span>
-          <span>AUTHORIZED_PERSONNEL_ONLY</span>
+        <div class="footer-flourish">
+          <svg viewBox="0 0 800 40" xmlns="http://www.w3.org/2000/svg">
+            <path d="M 0,20 Q 100,10 200,20 T 400,20 T 600,20 T 800,20" stroke="currentColor" fill="none" stroke-width="1.5"/>
+          </svg>
         </div>
-        <div class="footer-noise"></div>
+        <div class="footer-content">
+          <span>Scriptorium v.MMXXV</span>
+          <span class="separator">◇</span>
+          <a href="/logs" id="logs-link">Liber Registrorum</a>
+          <span class="separator">◇</span>
+          <span>In perpetuum conservandum</span>
+        </div>
       </footer>
     </div>
 
     <template id="note-template">
       <article class="note" draggable="true">
+        <div class="note-decoration note-dec-tl"></div>
+        <div class="note-decoration note-dec-tr"></div>
+        <div class="note-decoration note-dec-bl"></div>
+        <div class="note-decoration note-dec-br"></div>
+        
         <div class="note-header">
           <span class="note-id"></span>
-          <button class="note-delete" title="Delete transmission" aria-label="Delete">
-            <span>×</span>
+          <button class="note-delete" title="Delere chartam" aria-label="Delete">
+            ✕
           </button>
         </div>
         <div class="note-content">
-          <textarea maxlength="500" aria-label="Note content" placeholder="INPUT_TEXT_DATA..."></textarea>
+          <textarea maxlength="500" aria-label="Note content" placeholder="Scribe hic..."></textarea>
         </div>
         <div class="note-footer">
           <div class="note-author" aria-label="Author"></div>
@@ -171,8 +208,7 @@
     </template>
     
     <script src="/app.js"></script>
-    <script src="/crt-effect.js"></script>
-    <script src="/radar.js"></script>
-    <script src="/industrial-audio.js"></script>
+    <script src="/dust-particles.js"></script>
+    <script src="/candle.js"></script>
   </body>
 </html>

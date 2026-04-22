@@ -2,16 +2,15 @@ const canvas = document.getElementById("canvas");
 const newNoteBtn = document.getElementById("new-note-btn");
 const noteTemplate = document.getElementById("note-template");
 const bigClock = document.getElementById("big-clock");
-const bigClock2 = document.getElementById("big-clock-2");
 const generationCountdown = document.getElementById("generation-countdown");
 const lastSummary = document.getElementById("last-summary");
 const historyList = document.getElementById("history-list");
 
 const NOTE_COLORS = [
-  "var(--concrete)",
-  "var(--concrete-light)",
-  "#2d2d2d",
-  "#323232",
+  "linear-gradient(135deg, #faf5e8, #f4e8d0)",
+  "linear-gradient(135deg, #f4e8d0, #e0d4b8)",
+  "linear-gradient(135deg, #faf5e8, #e0d4b8)",
+  "linear-gradient(135deg, #f4e8d0, #faf5e8)",
 ];
 
 function pickRandomColor() {
@@ -60,25 +59,24 @@ function createNoteElement(note) {
   textarea.value = note.text || "";
   
   if (noteId) {
-    noteId.textContent = `PKT_${String(note.id).padStart(4, '0')}`;
+    noteId.textContent = `Charta_${String(note.id).padStart(4, '0')}`;
   }
   
   if (authorEl) {
-    authorEl.textContent = note.author_label ? `SRC:${note.author_label}` : "";
+    authorEl.textContent = note.author_label ? `Scriba:${note.author_label}` : "";
   }
 
   if (note.is_owner) {
     deleteBtn.style.display = "flex";
     deleteBtn.addEventListener("click", async () => {
-      if (!confirm("PURGE THIS DATA PACKET?")) return;
+      if (!confirm("Delere hanc chartam?")) return;
       try {
         const resp = await fetch(`/api/notes/${note.id}`, { method: "DELETE" });
         if (!resp.ok) throw new Error(`${resp.status}`);
         noteEl.remove();
-        showToast("PACKET_PURGED");
-        if (window.industrialAudio) window.industrialAudio.noteDeleted();
+        showToast("Charta deleta est");
       } catch (_err) {
-        showToast("PURGE_FAILED");
+        showToast("Deletio non successit");
       }
     });
   } else {
@@ -98,7 +96,7 @@ function createNoteElement(note) {
         body: JSON.stringify({ text: textarea.value }),
       });
     } catch (_error) {
-      alert("TRANSMISSION_UPDATE_FAILED");
+      alert("Emendatio non successit");
     }
   });
 
@@ -113,7 +111,7 @@ async function loadHistory() {
     if (!commits.length) {
       const li = document.createElement("li");
       li.className = "history-empty";
-      li.textContent = "// NO_ENTRIES_FOUND";
+      li.textContent = "⁓ Nullum invenitur ⁓";
       historyList.appendChild(li);
       return;
     }
@@ -132,7 +130,7 @@ async function loadHistory() {
       historyList.appendChild(li);
     }
   } catch (_err) {
-    historyList.innerHTML = `<li class="history-empty">LOG_ACCESS_DENIED</li>`;
+    historyList.innerHTML = `<li class="history-empty">Accessus negatus</li>`;
   }
 }
 
@@ -147,7 +145,7 @@ async function loadNotes() {
     const notes = await requestJson("/api/notes");
     notes.forEach((note) => canvas.appendChild(createNoteElement(note)));
   } catch (_error) {
-    alert("DATA_RETRIEVAL_FAILED");
+    alert("Chartae non inventae");
   }
 }
 
@@ -168,7 +166,6 @@ function formatCountdown(totalSeconds) {
 function updateBigClock() {
   const time = formatClock(new Date());
   if (bigClock) bigClock.textContent = time;
-  if (bigClock2) bigClock2.textContent = time;
 }
 
 function updateGenerationCountdown() {
@@ -187,7 +184,7 @@ async function refreshWorkerStatus() {
     const status = await requestJson("/api/worker-status");
     nextRunEpochMs = typeof status.next_run_epoch === "number" ? status.next_run_epoch * 1000 : null;
     if (lastSummary) {
-      lastSummary.textContent = status.summary || "AWAITING_OPERATOR_INPUT...";
+      lastSummary.textContent = status.summary || "Silentium regnat in hac nocte...";
     }
     updateGenerationCountdown();
 
@@ -196,13 +193,13 @@ async function refreshWorkerStatus() {
         canvas.innerHTML = "";
         await loadNotes();
         loadHistory();
-        showToast("NEW_CYCLE_INITIATED");
+        showToast("Novus cyclus inceptus est");
       }
       currentCycleId = status.cycle_id;
     }
   } catch (_error) {
     if (lastSummary) {
-      lastSummary.textContent = "STATUS_QUERY_FAILED";
+      lastSummary.textContent = "Status incognitus";
     }
   }
 }
@@ -217,16 +214,16 @@ function solvePow(challenge, difficulty) {
 }
 
 async function createNewNote() {
-  const text = window.prompt("ENTER_DATA_TRANSMISSION:", "");
+  const text = window.prompt("Scribe verba tua:", "");
   if (text === null || text.trim() === "") return;
 
   newNoteBtn.disabled = true;
   const origLabel = newNoteBtn.innerHTML;
-  newNoteBtn.innerHTML = '<span class="button-inner"><span class="button-symbol">⚠</span><span>PROCESSING...</span></span>';
+  newNoteBtn.innerHTML = '<span class="button-flourish">⌛</span><span class="button-text">Elaboro...</span><span class="button-flourish">⌛</span>';
   
   try {
     const pow = await requestJson("/api/pow-challenge");
-    showToast("COMPUTING_PROOF_OF_WORK...");
+    showToast("Computatio in progressu...");
     const nonce = await solvePow(pow.challenge, pow.difficulty_submit);
 
     const note = await requestJson("/api/notes", {
@@ -246,14 +243,12 @@ async function createNewNote() {
     noteEl.classList.add("just-added");
     canvas.appendChild(noteEl);
     noteEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    setTimeout(() => noteEl.classList.remove("just-added"), 600);
+    setTimeout(() => noteEl.classList.remove("just-added"), 800);
     
-    const message = note.author_label ? `TRANSMISSION_LOGGED_AS_${note.author_label}` : "PACKET_TRANSMITTED";
+    const message = note.author_label ? `Scriptum est ut ${note.author_label}` : "Charta inscripta est";
     showToast(message);
-    
-    if (window.industrialAudio) window.industrialAudio.noteCreated();
   } catch (_error) {
-    alert("TRANSMISSION_FAILED");
+    alert("Inscriptio non successit");
   } finally {
     newNoteBtn.disabled = false;
     newNoteBtn.innerHTML = origLabel;
@@ -270,7 +265,7 @@ canvas.addEventListener("drop", async (event) => {
     return;
   }
   const rect = canvas.getBoundingClientRect();
-  const x = Math.max(0, Math.round(event.clientX - rect.left - 120));
+  const x = Math.max(0, Math.round(event.clientX - rect.left - 130));
   const y = Math.max(0, Math.round(event.clientY - rect.top - 20));
   dragNote.style.left = `${x}px`;
   dragNote.style.top = `${y}px`;
@@ -284,7 +279,7 @@ canvas.addEventListener("drop", async (event) => {
       body: JSON.stringify({ x, y }),
     });
   } catch (_error) {
-    alert("RELOCATION_FAILED");
+    alert("Motio non successit");
   }
 });
 
