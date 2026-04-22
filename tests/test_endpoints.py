@@ -369,6 +369,96 @@ class CycleHistoryEndpointTests(unittest.TestCase):
         self.assertEqual(len(data["cycles"]), 2)
 
 
+class HistoryEndpointTests(unittest.TestCase):
+    """Covers the existing /api/history handler that wraps _fetch_commit_history."""
+
+    def setUp(self):
+        import tempfile, server
+        # Wipe the module-level cache between tests so they don't leak state
+        server._HISTORY_CACHE["ts"] = 0.0
+        server._HISTORY_CACHE["data"] = []
+        os.environ["GITHUB_OWNER"] = "MarchalMaxim"
+        os.environ["GITHUB_REPO"] = "TheMatrix"
+        self.tmp = tempfile.TemporaryDirectory()
+        self.url, self.stop = _start_server(Path(self.tmp.name))
+        self.addCleanup(self.tmp.cleanup)
+        self.addCleanup(self.stop)
+
+    def _route_aware_urlopen(self, gh_response_body, real_urlopen):
+        """Returns a urlopen replacement that intercepts api.github.com calls
+        and returns gh_response_body, but passes everything else (e.g. the
+        test's own calls to the local test server) to the real urlopen."""
+        def _fake_urlopen(req, *args, **kwargs):
+            url = req.full_url if hasattr(req, "full_url") else str(req)
+            if "api.github.com" in url:
+                class _R:
+                    headers = {"Content-Type": "application/json"}
+                    def read(self):
+                        return json.dumps(gh_response_body).encode()
+                    def __enter__(self):
+                        return self
+                    def __exit__(self, *a):
+                        return False
+                return _R()
+            return real_urlopen(req, *args, **kwargs)
+        return _fake_urlopen
+
+    def test_filters_to_cycle_commits_only(self):
+        """Only commits whose title starts with 'cycle-' are returned."""
+        gh_resp = [
+            {"sha": "aaaaaaaaaaaa1111", "html_url": "https://x/1",
+             "commit": {"message": "cycle-abc: dark mode",
+                        "author": {"date": "2026-04-25T00:00:00Z"}}},
+            {"sha": "bbbbbbbbbbbb2222", "html_url": "https://x/2",
+             "commit": {"message": "chore: gitignore .env",
+                        "author": {"date": "2026-04-24T00:00:00Z"}}},
+            {"sha": "cccccccccccc3333", "html_url": "https://x/3",
+             "commit": {"message": "cycle-def: medieval theme",
+                        "author": {"date": "2026-04-23T00:00:00Z"}}},
+        ]
+        real = urllib.request.urlopen
+        with mock.patch("urllib.request.urlopen",
+                        side_effect=self._route_aware_urlopen(gh_resp, real)):
+            with urllib.request.urlopen(f"{self.url}/api/history") as r:
+                data = json.loads(r.read())
+        titles = [c["title"] for c in data]
+        self.assertEqual(titles, ["cycle-abc: dark mode", "cycle-def: medieval theme"])
+
+    def test_returns_empty_when_github_owner_unset(self):
+        os.environ.pop("GITHUB_OWNER", None)
+        with urllib.request.urlopen(f"{self.url}/api/history") as r:
+            data = json.loads(r.read())
+        self.assertEqual(data, [])
+
+    def test_caches_responses(self):
+        """A second call within TTL returns the cached value, so only one
+        upstream GitHub fetch is made."""
+        gh_resp = [
+            {"sha": "ddddddd0000", "html_url": "https://x/d",
+             "commit": {"message": "cycle-xyz: thing",
+                        "author": {"date": "2026-04-25T00:00:00Z"}}},
+        ]
+        gh_calls = {"n": 0}
+        real = urllib.request.urlopen
+        def routed(req, *a, **kw):
+            url = req.full_url if hasattr(req, "full_url") else str(req)
+            if "api.github.com" in url:
+                gh_calls["n"] += 1
+                class _R:
+                    headers = {}
+                    def read(self): return json.dumps(gh_resp).encode()
+                    def __enter__(self): return self
+                    def __exit__(self, *a): return False
+                return _R()
+            return real(req, *a, **kw)
+        with mock.patch("urllib.request.urlopen", side_effect=routed):
+            with urllib.request.urlopen(f"{self.url}/api/history") as r:
+                json.loads(r.read())
+            with urllib.request.urlopen(f"{self.url}/api/history") as r:
+                json.loads(r.read())
+        self.assertEqual(gh_calls["n"], 1)
+
+
 class AdminEndpointTests(unittest.TestCase):
     def setUp(self):
         import tempfile

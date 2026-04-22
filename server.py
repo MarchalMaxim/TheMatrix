@@ -705,6 +705,9 @@ class NoteBoardHandler(SimpleHTTPRequestHandler):
             except ValueError:
                 pass
             self._send_json({"cycles": self._read_recent_public_cycles(limit)}); return
+        # Note: /api/history is served by the existing handler higher up
+        # (line ~685) which uses _fetch_commit_history() with caching and
+        # cycle-* filtering. No need for a second handler here.
         cycle_match = re.match(r"^/api/cycle/([^/]+)$", self.path)
         if cycle_match:
             cycle_id = cycle_match.group(1)
