@@ -1,0 +1,65 @@
+{
+  "handoff_id": "31dbe4d64a10",
+  "summary": "Collected 4 suggestion(s). Top themes: like, web, need, feel, more.",
+  "agent_summary": "",
+  "notes": [
+    {
+      "id": "839fb0a1-cccb-4090-9530-468c846edf2a",
+      "text": "\ud83c\udfaf 1. Make it feel less generic, more them  Right now it reads like many dev agencies: \u201ccustom solutions, UX/UI, DevOps\u2026\u201d  \ud83d\udc49 Suggest:  A bold opinionated headline \u2192 instead of \u201cBuilding a Better Web\u201d \u2192 try something like: \u201cWe build web apps your developers won\u2019t want to rewrite.\u201d Add a short \u201chow we\u2019re different\u201d section (with real specifics, not buzzwords)",
+      "x": 228,
+      "y": 1388,
+      "color": "linear-gradient(135d",
+      "createdAt": "2026-04-22T18:13:13.891591+00:00",
+      "votes": 0,
+      "voter_hashes": [],
+      "submitter_hash": "e17f2de134925f225e9fe78e0a211dfc59dc54419185909501ef49d311a536d1",
+      "cycle_id": "cycle-979064b2",
+      "author_label": "misty hare"
+    },
+    {
+      "id": "5d81c955-af06-462e-a83e-642637c480ac",
+      "text": "\ud83c\udfa5 2. Add a 60-second \u201chow we work\u201d video  People trust faces more than text.  \ud83d\udc49 Fun idea:  A quick Loom-style walkthrough: \u201cHere\u2019s how we take your idea \u2192 shipped product\u201d Show real screens, not stock footage  Bonus: way higher conversion than static text.",
+      "x": 179,
+      "y": 920,
+      "color": "linear-gradient(135d",
+      "createdAt": "2026-04-22T18:14:15.596408+00:00",
+      "votes": 0,
+      "voter_hashes": [],
+      "submitter_hash": "e17f2de134925f225e9fe78e0a211dfc59dc54419185909501ef49d311a536d1",
+      "cycle_id": "cycle-979064b2",
+      "author_label": "misty hare"
+    },
+    {
+      "id": "7d04f06e-929b-4f88-9e87-7d8796d8fc42",
+      "text": "\ud83e\udde0 3. Turn services into interactive experiences  Instead of static sections like \u201cWeb Development\u201d or \u201cQA\u201d:  \ud83d\udc49 Suggest:  A \u201cWhat do you need?\u201d quiz \u201cI want to build an MVP\u201d \u201cI need to scale an app\u201d \u201cI need a redesign\u201d Then dynamically show relevant services + case studies  Makes the site feel alive.",
+      "x": 594,
+      "y": 620,
+      "color": "linear-gradient(135d",
+      "createdAt": "2026-04-22T18:14:28.238627+00:00",
+      "votes": 0,
+      "voter_hashes": [],
+      "submitter_hash": "e17f2de134925f225e9fe78e0a211dfc59dc54419185909501ef49d311a536d1",
+      "cycle_id": "cycle-979064b2",
+      "author_label": "misty hare"
+    },
+    {
+      "id": "6923c9c9-933e-4f25-99a8-be7dfcc5f67c",
+      "text": "Gangster rap all the way. Bling bling",
+      "x": 261,
+      "y": 777,
+      "color": "linear-gradient(135d",
+      "createdAt": "2026-04-22T18:26:28.219597+00:00",
+      "votes": 0,
+      "voter_hashes": [],
+      "submitter_hash": "c10bad4defef6daecc548e76047e6669fc2298faf6d7e167f9fdf851fab932e6",
+      "cycle_id": "cycle-979064b2",
+      "author_label": "misty hare"
+    }
+  ],
+  "files_written": [
+    "public/index.html"
+  ],
+  "files_deleted": [],
+  "budget_hit": true,
+  "finalized": false
+}

@@ -1,219 +1,203 @@
 <!doctype html>
-<html lang="de-en">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>⚔ DIE MATRIX KOMMANDOZENTRALE ⚔</title>
+    <title>💎 THE MATRIX 💎 Drop Ya Sticky Notes</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="noise-overlay"></div>
-    <div class="scanlines"></div>
-    
-    <div class="barbed-wire barbed-top"></div>
-    <div class="barbed-wire barbed-bottom"></div>
+    <div class="bling-overlay"></div>
+    <canvas id="vinyl-canvas"></canvas>
     
     <div class="container">
-      <header class="command-header">
-        <div class="warning-stripe"></div>
+      <header class="rap-header">
+        <div class="gold-bar"></div>
         
-        <div class="insignia-block">
-          <svg viewBox="0 0 120 120" class="military-badge">
-            <polygon points="60,10 80,40 110,40 85,60 95,95 60,75 25,95 35,60 10,40 40,40" 
-                     fill="var(--feldgrau)" stroke="var(--olive)" stroke-width="3"/>
-            <circle cx="60" cy="60" r="20" fill="var(--olive)" stroke="var(--black)" stroke-width="2"/>
-            <text x="60" y="68" font-size="20" fill="var(--black)" text-anchor="middle" font-weight="bold">M</text>
+        <div class="logo-block">
+          <svg viewBox="0 0 200 200" class="bling-logo">
+            <defs>
+              <linearGradient id="gold-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
+                <stop offset="50%" style="stop-color:#FFA500;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#FFD700;stop-opacity:1" />
+              </linearGradient>
+              <filter id="shine">
+                <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+                <feOffset dx="2" dy="2" result="offsetblur"/>
+                <feComponentTransfer>
+                  <feFuncA type="linear" slope="0.5"/>
+                </feComponentTransfer>
+                <feMerge> 
+                  <feMergeNode/>
+                  <feMergeNode in="SourceGraphic"/> 
+                </feMerge>
+              </filter>
+            </defs>
+            <text x="100" y="80" font-size="70" font-weight="900" fill="url(#gold-gradient)" 
+                  text-anchor="middle" font-family="Impact, sans-serif" filter="url(#shine)">THE</text>
+            <text x="100" y="140" font-size="90" font-weight="900" fill="url(#gold-gradient)" 
+                  text-anchor="middle" font-family="Impact, sans-serif" filter="url(#shine)">MATRIX</text>
+            <circle cx="30" cy="30" r="15" fill="url(#gold-gradient)" filter="url(#shine)" class="bling-dot"/>
+            <circle cx="170" cy="30" r="15" fill="url(#gold-gradient)" filter="url(#shine)" class="bling-dot"/>
+            <circle cx="30" cy="170" r="15" fill="url(#gold-gradient)" filter="url(#shine)" class="bling-dot"/>
+            <circle cx="170" cy="170" r="15" fill="url(#gold-gradient)" filter="url(#shine)" class="bling-dot"/>
           </svg>
           
-          <h1>
-            <span class="title-prefix">DIE</span>
-            <span class="title-main">MATRIX</span>
-            <span class="title-suffix">KOMMANDOZENTRALE</span>
+          <h1 class="main-title">
+            <span class="title-line-1">💎 THE MATRIX 💎</span>
+            <span class="title-line-2">DROP YA STICKY NOTES</span>
           </h1>
           
-          <div class="motto-banner">
-            <span class="motto-left">⚡ STRATEGIC NOTES</span>
-            <span class="motto-divider">|</span>
-            <span class="motto-right">TAKTISCHE MELDUNGEN ⚡</span>
-          </div>
+          <p class="tagline">
+            <span class="tag-icon">🎤</span>
+            <span class="tag-text">Post It · Vote It · Keep It Real</span>
+            <span class="tag-icon">🎤</span>
+          </p>
         </div>
         
-        <nav class="command-nav">
-          <a href="/games.html" class="nav-btn">
-            <span class="btn-icon">🎯</span>
-            <span>KRIEGSSPIELE / WAR GAMES</span>
+        <nav class="dope-nav">
+          <a href="/beats.html" class="nav-link">
+            <span class="link-icon">🎵</span>
+            <span>DROP BEATS</span>
           </a>
-          <a href="/intelligence.html" class="nav-btn">
-            <span class="btn-icon">📋</span>
-            <span>INTELLIGENCE REPORTS</span>
+          <a href="/freestyle.html" class="nav-link">
+            <span class="link-icon">🔥</span>
+            <span>FREESTYLE GEN</span>
           </a>
-          <a href="/archive.html" class="nav-btn">
-            <span class="btn-icon">📁</span>
-            <span>ARCHIV / ARCHIVES</span>
+          <a href="/hall-of-fame.html" class="nav-link">
+            <span class="link-icon">👑</span>
+            <span>HALL OF FAME</span>
           </a>
         </nav>
         
-        <div class="warning-stripe"></div>
+        <div class="gold-bar"></div>
       </header>
 
-      <main class="operations-main">
-        <section class="briefing-panel">
+      <main class="main-stage">
+        <section class="info-panel">
           <div class="panel-header">
-            <span class="panel-icon">⚠</span>
-            <h2>MISSION ZEITSTEMPEL / TIME STATUS</h2>
-            <span class="panel-icon">⚠</span>
+            <span class="header-icon">⏰</span>
+            <h2>WHAT TIME IS IT THO</h2>
+            <span class="header-icon">⏰</span>
           </div>
           
-          <div class="status-grid">
-            <div class="status-item">
-              <div class="status-label">AKTUELLE ZEIT / CURRENT TIME</div>
-              <div class="status-display" id="big-clock">00:00:00</div>
+          <div class="time-grid">
+            <div class="time-box">
+              <div class="time-label">RIGHT NOW</div>
+              <div class="time-display" id="big-clock">00:00:00</div>
             </div>
-            <div class="status-divider">
-              <div class="divider-line"></div>
-            </div>
-            <div class="status-item">
-              <div class="status-label">NÄCHSTE OPERATION / NEXT CYCLE</div>
-              <div class="status-display alert-text" id="generation-countdown">4:00:00</div>
+            <div class="time-divider">💎</div>
+            <div class="time-box">
+              <div class="time-label">NEXT DROP</div>
+              <div class="time-display countdown" id="generation-countdown">4:00:00</div>
             </div>
           </div>
           
-          <div class="intel-box">
-            <div class="intel-header">LETZTE MELDUNG / LAST TRANSMISSION:</div>
-            <div class="intel-content" id="last-summary">Waiting for orders...</div>
+          <div class="status-box">
+            <div class="status-header">🎤 LAST TRANSMISSION:</div>
+            <div class="status-content" id="last-summary">Waiting for the beat to drop...</div>
           </div>
         </section>
 
-        <section class="briefing-panel">
+        <section class="info-panel">
           <div class="panel-header">
-            <span class="panel-icon">✎</span>
-            <h2>NEUE NACHRICHT / NEW MESSAGE</h2>
-            <span class="panel-icon">✎</span>
+            <span class="header-icon">📝</span>
+            <h2>DROP A NOTE</h2>
+            <span class="header-icon">📝</span>
           </div>
           
-          <div class="deploy-content">
-            <button id="new-note-btn" type="button" class="deploy-button">
-              <span class="deploy-brackets">[</span>
-              <span class="deploy-text">NACHRICHT SENDEN / DEPLOY MESSAGE</span>
-              <span class="deploy-brackets">]</span>
+          <div class="drop-zone">
+            <button id="new-note-btn" type="button" class="drop-button">
+              <span class="btn-bracket">[</span>
+              <span class="btn-text">🎤 POST YA THOUGHTS 🎤</span>
+              <span class="btn-bracket">]</span>
             </button>
             
             <div class="instructions">
-              <p>⚡ Ziehe Nachrichten zum Verschieben / Drag messages to relocate</p>
-              <p>⚡ Klicke zum Bearbeiten / Click to edit your own</p>
-              <p>⚡ Nur Text erlaubt / Text only accepted</p>
+              <p>✨ Drag notes around the wall, keep it fresh</p>
+              <p>✨ Click to edit your own bars</p>
+              <p>✨ Real talk only, no cap</p>
             </div>
           </div>
         </section>
 
-        <section id="canvas" class="operations-board" aria-label="Message board">
-          <div class="grid-overlay"></div>
-          <div class="corner-mark corner-tl">
-            <svg width="40" height="40" viewBox="0 0 40 40">
-              <line x1="0" y1="10" x2="10" y2="10" stroke="currentColor" stroke-width="2"/>
-              <line x1="10" y1="0" x2="10" y2="10" stroke="currentColor" stroke-width="2"/>
-              <line x1="0" y1="20" x2="20" y2="20" stroke="currentColor" stroke-width="1"/>
-              <line x1="20" y1="0" x2="20" y2="20" stroke="currentColor" stroke-width="1"/>
-            </svg>
-          </div>
-          <div class="corner-mark corner-tr">
-            <svg width="40" height="40" viewBox="0 0 40 40">
-              <line x1="30" y1="10" x2="40" y2="10" stroke="currentColor" stroke-width="2"/>
-              <line x1="30" y1="0" x2="30" y2="10" stroke="currentColor" stroke-width="2"/>
-              <line x1="20" y1="20" x2="40" y2="20" stroke="currentColor" stroke-width="1"/>
-              <line x1="20" y1="0" x2="20" y2="20" stroke="currentColor" stroke-width="1"/>
-            </svg>
-          </div>
-          <div class="corner-mark corner-bl">
-            <svg width="40" height="40" viewBox="0 0 40 40">
-              <line x1="0" y1="30" x2="10" y2="30" stroke="currentColor" stroke-width="2"/>
-              <line x1="10" y1="30" x2="10" y2="40" stroke="currentColor" stroke-width="2"/>
-              <line x1="0" y1="20" x2="20" y2="20" stroke="currentColor" stroke-width="1"/>
-              <line x1="20" y1="20" x2="20" y2="40" stroke="currentColor" stroke-width="1"/>
-            </svg>
-          </div>
-          <div class="corner-mark corner-br">
-            <svg width="40" height="40" viewBox="0 0 40 40">
-              <line x1="30" y1="30" x2="40" y2="30" stroke="currentColor" stroke-width="2"/>
-              <line x1="30" y1="30" x2="30" y2="40" stroke="currentColor" stroke-width="2"/>
-              <line x1="20" y1="20" x2="40" y2="20" stroke="currentColor" stroke-width="1"/>
-              <line x1="20" y1="20" x2="20" y2="40" stroke="currentColor" stroke-width="1"/>
-            </svg>
-          </div>
+        <section id="canvas" class="sticky-wall" aria-label="Note board">
+          <div class="graffiti-bg"></div>
         </section>
 
-        <section id="previous-cycle" data-invariant="previous-cycle" class="briefing-panel" hidden>
+        <section id="previous-cycle" data-invariant="previous-cycle" class="info-panel" hidden>
           <div class="panel-header">
-            <span class="panel-icon">⏮</span>
-            <h2>VORHERIGE OPERATION / PREVIOUS CYCLE</h2>
-            <span class="panel-icon">⏮</span>
+            <span class="header-icon">⏮️</span>
+            <h2>LAST CYCLE VIBES</h2>
+            <span class="header-icon">⏮️</span>
           </div>
           
           <div class="cycle-content">
             <p id="prev-cycle-summary" class="cycle-summary"></p>
             <details id="prev-cycle-details" class="cycle-details">
               <summary>
-                <span class="detail-bracket">▸</span>
+                <span class="detail-arrow">▶</span>
                 <span id="prev-cycle-count">0</span>
-                <span> Gesammelte Meldungen / Collected Messages</span>
-                <span class="detail-bracket">◂</span>
+                <span> Sticky Notes from Last Session</span>
+                <span class="detail-arrow">◀</span>
               </summary>
-              <ul id="prev-cycle-notes-list" class="archived-messages"></ul>
+              <ul id="prev-cycle-notes-list" class="prev-notes-list"></ul>
             </details>
           </div>
         </section>
 
-        <section id="history" class="briefing-panel">
+        <section id="history" class="info-panel">
           <div class="panel-header">
-            <span class="panel-icon">📜</span>
-            <h2>OPERATIONSPROTOKOLL / OPERATION LOG</h2>
-            <span class="panel-icon">📜</span>
+            <span class="header-icon">📚</span>
+            <h2>THE ARCHIVES</h2>
+            <span class="header-icon">📚</span>
           </div>
           
           <div class="history-content">
             <ol id="history-list" class="history-list">
-              <li class="history-empty">⚠ Keine Aufzeichnungen / No records found ⚠</li>
+              <li class="history-empty">🎵 No records found yet 🎵</li>
             </ol>
           </div>
         </section>
       </main>
 
       <footer id="site-footer">
-        <div class="footer-tape"></div>
+        <div class="footer-bling"></div>
         <div class="footer-content">
-          <span class="footer-code">KOMMANDO-MATRIX-42</span>
-          <span class="footer-separator">●</span>
-          <a href="/logs" id="logs-link">SYSTEMPROTOKOLL / SYSTEM LOGS</a>
-          <span class="footer-separator">●</span>
-          <span class="footer-code">GEHEIM / CLASSIFIED</span>
+          <span class="footer-label">THE MATRIX © 2024</span>
+          <span class="footer-sep">💎</span>
+          <a href="/logs" id="logs-link">SYSTEM LOGS</a>
+          <span class="footer-sep">💎</span>
+          <span class="footer-label">KEEP IT 💯</span>
         </div>
         <div class="footer-warning">
-          ⚠ ACHTUNG: Alle Nachrichten werden überwacht / WARNING: All messages are monitored ⚠
+          ⚠️ ALL POSTS PUBLIC · STAY REAL · NO FAKE VIBES ⚠️
         </div>
       </footer>
     </div>
 
     <template id="note-template">
       <article class="note" draggable="true">
-        <div class="note-stamp">GEHEIM</div>
+        <div class="note-bling">💎</div>
         <div class="note-header">
           <span class="note-id"></span>
-          <button class="note-delete" title="Nachricht löschen / Delete message" aria-label="Delete">
+          <button class="note-delete" title="Delete note" aria-label="Delete">
             ✖
           </button>
         </div>
         <div class="note-content">
-          <textarea maxlength="500" aria-label="Note content" placeholder="Schreiben Sie hier / Write here..."></textarea>
+          <textarea maxlength="500" aria-label="Note content" placeholder="Drop your bars here..."></textarea>
         </div>
         <div class="note-footer">
           <div class="note-author" aria-label="Author"></div>
           <div class="note-timestamp"></div>
         </div>
-        <div class="note-classification">VERTRAULICH / CONFIDENTIAL</div>
+        <div class="note-stamp">REAL</div>
       </article>
     </template>
     
     <script src="/app.js"></script>
-    <script src="/military-effects.js"></script>
+    <script src="/bling.js"></script>
   </body>
 </html>
